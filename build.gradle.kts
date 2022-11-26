@@ -17,9 +17,7 @@ plugins {
     // https://github.com/PaperMC/paperweight
     id("io.papermc.paperweight.userdev").version("1.3.8")
 }
-// TODO Change the group to the one you need
 group = "dev.ckateptb.minecraft"
-// TODO Control project version according to https://semver.org/spec/v2.0.0.html
 version = "1.0.0-SNAPSHOT"
 
 val rootPackage = "${project.group}.${project.name.toLowerCase()}"
@@ -27,27 +25,30 @@ val internal = "${rootPackage}.internal"
 
 repositories {
     mavenCentral()
-    // TODO You can add the repositories you need
-//    maven("https://repo.animecraft.fun/repository/maven-snapshots/")
+    maven("https://repo.animecraft.fun/repository/maven-snapshots/")
+    maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
-    // TODO Configure papermc version
     paperDevBundle("1.19.2-R0.1-SNAPSHOT")
 
-    // TODO Using the line below you can add dependencies.
-    //  Plus, instead of the version, it will give you the latest version.
-//    implementation("com.example.group:example-library:+")
+    compileOnly("dev.ckateptb.minecraft:Nicotine:1.0.1-SNAPSHOT")
+    compileOnly("dev.ckateptb.minecraft:Atom:1.0.3-SNAPSHOT")
+    compileOnly("dev.ckateptb.minecraft:Supervisor:1.0.0-SNAPSHOT")
+
+    implementation("org.apache.commons:commons-math3:3.6.1")
+
+    implementation(platform("com.intellectualsites.bom:bom-1.18.x:1.19"))
+    compileOnly("com.fastasyncworldedit:FastAsyncWorldEdit-Core")
+    compileOnly("com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit") { isTransitive = false }
+
     compileOnly("org.projectlombok:lombok:+")
     annotationProcessor("org.projectlombok:lombok:+")
 }
 
 tasks {
     shadowJar {
-        // TODO If you need to embed an external library, specify its initial package instead of <com> (2 places)
-//        relocate("com", "${internal}.com")
-//        ...
-//        relocate("com", "${internal}.com")
+        relocate("org.apache.commons.math3", "${internal}.math3")
     }
     register<ProGuardTask>("shrink") {
         dependsOn(shadowJar)
@@ -112,9 +113,6 @@ publishing {
 nexusPublishing {
     repositories {
         create("myNexus") {
-            // TODO Customize maven-publish to suit your needs.
-            //  As an example, here is the setting for nexus + github-action.
-            //  For the latter, you need to configure github-secrets
             nexusUrl.set(uri("https://repo.animecraft.fun/"))
             snapshotRepositoryUrl.set(uri("https://repo.animecraft.fun/repository/maven-snapshots/"))
             username.set(System.getenv("NEXUS_USERNAME"))
