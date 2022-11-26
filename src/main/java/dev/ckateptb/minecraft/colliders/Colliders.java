@@ -2,10 +2,10 @@ package dev.ckateptb.minecraft.colliders;
 
 import dev.ckateptb.common.tableclothcontainer.IoC;
 import dev.ckateptb.minecraft.atom.async.AsyncService;
-import dev.ckateptb.minecraft.colliders.geomery.AxisAlignedBoundingBoxCollider;
-import dev.ckateptb.minecraft.colliders.geomery.CombinedBoundingBoxCollider;
-import dev.ckateptb.minecraft.colliders.geomery.OrientedBoundingBoxCollider;
-import dev.ckateptb.minecraft.colliders.geomery.SphereBoundingBoxCollider;
+import dev.ckateptb.minecraft.colliders.geometry.AxisAlignedBoundingBoxCollider;
+import dev.ckateptb.minecraft.colliders.geometry.CombinedBoundingBoxCollider;
+import dev.ckateptb.minecraft.colliders.geometry.OrientedBoundingBoxCollider;
+import dev.ckateptb.minecraft.colliders.geometry.SphereBoundingBoxCollider;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import org.bukkit.Location;
 import org.bukkit.World;
