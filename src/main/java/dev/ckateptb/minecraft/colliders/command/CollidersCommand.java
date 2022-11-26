@@ -7,7 +7,7 @@ import dev.ckateptb.common.tableclothcontainer.IoC;
 import dev.ckateptb.common.tableclothcontainer.annotation.Component;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
-import dev.ckateptb.minecraft.colliders.geomery.OrientedBoundingBoxCollider;
+import dev.ckateptb.minecraft.colliders.geometry.OrientedBoundingBoxCollider;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import dev.ckateptb.minecraft.supervisor.Command;
 import lombok.Getter;

@@ -1,4 +1,4 @@
-package dev.ckateptb.minecraft.colliders.geomery;
+package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
 import com.sk89q.worldedit.EditSession;

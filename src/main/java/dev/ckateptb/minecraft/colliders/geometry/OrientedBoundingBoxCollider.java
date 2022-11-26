@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with Bending. If not, see <https://www.gnu.org/licenses/>.
  */
-package dev.ckateptb.minecraft.colliders.geomery;
+package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
 import com.sk89q.worldedit.EditSession;

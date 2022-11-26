@@ -1,4 +1,4 @@
-package dev.ckateptb.minecraft.colliders.geomery;
+package dev.ckateptb.minecraft.colliders.geometry;
 
 import dev.ckateptb.minecraft.atom.async.block.ThreadSafeBlock;
 import dev.ckateptb.minecraft.atom.chain.AtomChain;
