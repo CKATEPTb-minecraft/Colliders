@@ -1,9 +1,6 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldedit.bukkit.BukkitWorld;
-import com.sk89q.worldedit.regions.CuboidRegion;
 import dev.ckateptb.minecraft.atom.async.AsyncService;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
@@ -15,6 +12,8 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -103,23 +102,34 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
 
     @Override
     public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<Stream<Block>> consumer) {
-        BukkitWorld bukkitWorld = new BukkitWorld(world);
-        consumer.accept(new CuboidRegion(
-                bukkitWorld,
-                min.toWorldEditBlockVector(),
-                max.toWorldEditBlockVector()
-        ).stream().map(blockVector -> ImmutableVector.of(blockVector).toLocation(world).getBlock()));
+        this.affectPositions(stream ->
+                consumer.accept(stream.parallel().map(Location::getBlock).filter(block ->
+                        Colliders.aabb(block).intersects(this))));
         return this;
     }
 
     @Override
     public AxisAlignedBoundingBoxCollider affectPositions(Consumer<Stream<Location>> consumer) {
-        BukkitWorld bukkitWorld = new BukkitWorld(world);
-        consumer.accept(new CuboidRegion(
-                bukkitWorld,
-                min.toWorldEditBlockVector(),
-                max.toWorldEditBlockVector()
-        ).stream().map(blockVector -> BukkitAdapter.adapt(world, blockVector)));
+        ImmutableVector position = this.getCenter();
+        double maxExtent = getHalfExtents().maxComponent();
+        int radius = (int) (Math.ceil(maxExtent) + 1);
+        double originX = position.getX();
+        double originY = position.getY();
+        double originZ = position.getZ();
+        Set<Location> locations = new HashSet<>();
+        for (double x = originX - radius; x <= originX + radius; x++) {
+            for (double y = originY - radius; y <= originY + radius; y++) {
+                for (double z = originZ - radius; z <= originZ + radius; z++) {
+                    ImmutableVector vector = new ImmutableVector(x, y, z);
+                    Location location = vector.toLocation(world).toCenterLocation();
+                    if (Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
+                            .at(location.toVector()).intersects(this)) {
+                        locations.add(vector.toLocation(world));
+                    }
+                }
+            }
+        }
+        consumer.accept(locations.stream());
         return this;
     }
 

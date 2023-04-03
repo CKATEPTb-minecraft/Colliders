@@ -3,5 +3,5 @@ version: '${projectVersion}'
 main: '${projectMainClass}'
 api-version: 1.19
 authors: [ CKATEPTb ]
-depend: [ Atom, Nicotine, Supervisor, FastAsyncWorldEdit ]
+depend: [ Atom, Nicotine, Supervisor ]
 description: Implementation of non-traditional minecraft colliders.
