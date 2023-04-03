@@ -1,10 +1,9 @@
 package dev.ckateptb.minecraft.colliders;
 
-import dev.ckateptb.minecraft.atom.async.block.ThreadSafeBlock;
-import dev.ckateptb.minecraft.atom.chain.CurrentThreadAtomChain;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 
@@ -22,11 +21,11 @@ public interface Collider {
 
     boolean contains(Vector vector);
 
-    Collider affectEntities(Consumer<Stream<CurrentThreadAtomChain<Entity>>> consumer);
+    Collider affectEntities(Consumer<Stream<Entity>> consumer);
 
-    Collider affectBlocks(Consumer<Stream<CurrentThreadAtomChain<ThreadSafeBlock>>> consumer);
+    Collider affectBlocks(Consumer<Stream<Block>> consumer);
 
-    Collider affectPositions(Consumer<Stream<CurrentThreadAtomChain<Location>>> consumer);
+    Collider affectPositions(Consumer<Stream<Location>> consumer);
 
     World getWorld();
 

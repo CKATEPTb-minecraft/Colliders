@@ -1,32 +1,10 @@
-/*
- * Copyright 2020-2022 Moros
- *
- * This file is part of Bending.
- *
- * Bending is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Bending is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with Bending. If not, see <https://www.gnu.org/licenses/>.
- */
 package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
-import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.bukkit.BukkitWorld;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import dev.ckateptb.minecraft.atom.async.AsyncService;
-import dev.ckateptb.minecraft.atom.async.block.ThreadSafeBlock;
-import dev.ckateptb.minecraft.atom.chain.AtomChain;
-import dev.ckateptb.minecraft.atom.chain.CurrentThreadAtomChain;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
@@ -35,6 +13,7 @@ import lombok.Getter;
 import org.apache.commons.math3.util.FastMath;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
@@ -169,87 +148,56 @@ public class OrientedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public Collider affectEntities(Consumer<Stream<CurrentThreadAtomChain<Entity>>> consumer) {
+    public Collider affectEntities(Consumer<Stream<Entity>> consumer) {
         double max = halfExtents.maxComponent();
         AsyncService asyncService = Colliders.getAsyncService();
-        consumer.accept(
-                asyncService.getNearbyEntities(
-                                this.getCenter().toLocation(world),
-                                max,
-                                max,
-                                max
-                        )
-                        .stream()
-                        .parallel()
-                        .filter(entity -> {
-                            AxisAlignedBoundingBoxCollider aabb = Colliders.aabb(entity);
-                            return this.intersects(aabb) && this.contains(this.getClosestPosition(aabb.getCenter()));
-                        })
-                        .map(AtomChain::of)
-        );
+        consumer.accept(asyncService.getNearbyEntities(
+                this.getCenter().toLocation(world),
+                max, max, max
+        ).stream().parallel().filter(entity -> {
+            AxisAlignedBoundingBoxCollider aabb = Colliders.aabb(entity);
+            return this.intersects(aabb) && this.contains(this.getClosestPosition(aabb.getCenter()));
+        }));
         return this;
     }
 
     @Override
-    public Collider affectBlocks(Consumer<Stream<CurrentThreadAtomChain<ThreadSafeBlock>>> consumer) {
+    public Collider affectBlocks(Consumer<Stream<Block>> consumer) {
         BukkitWorld bukkitWorld = new BukkitWorld(world);
         double maxComponent = this.halfExtents.maxComponent();
         ImmutableVector halfExtents = new ImmutableVector(maxComponent, maxComponent, maxComponent);
-        try (EditSession editSession = ThreadSafeBlock.defaultEditSession(bukkitWorld)) {
-            consumer.accept(
-                    new CuboidRegion(
-                            bukkitWorld,
-                            halfExtents.negative().add(center).toWorldEditBlockVector(),
-                            halfExtents.add(center).toWorldEditBlockVector()
-                    )
-                            .stream()
-                            .filter(position -> this.intersects(
-                                            Colliders.aabb(
-                                                    world,
-                                                    ImmutableVector.ZERO,
-                                                    ImmutableVector.ONE
-                                            ).at(ImmutableVector.of(position))
-                                    ) && this.contains(ImmutableVector.of(position))
-                            ).map(position -> AtomChain.of(
-                                            new ThreadSafeBlock(
-                                                    bukkitWorld,
-                                                    position
-                                            )
-                                                    .setEditSession(editSession)
-                                    )
-                            )
-            );
-        }
+        consumer.accept(new CuboidRegion(
+                bukkitWorld,
+                halfExtents.negative().add(center).toWorldEditBlockVector(),
+                halfExtents.add(center).toWorldEditBlockVector()
+        ).stream().filter(position -> this.intersects(
+                        Colliders.aabb(
+                                world,
+                                ImmutableVector.ZERO,
+                                ImmutableVector.ONE
+                        ).at(ImmutableVector.of(position))
+                ) && this.contains(ImmutableVector.of(position))
+        ).map(position -> ImmutableVector.of(position).toLocation(world).getBlock()));
         return this;
     }
 
     @Override
-    public Collider affectPositions(Consumer<Stream<CurrentThreadAtomChain<Location>>> consumer) {
+    public Collider affectPositions(Consumer<Stream<Location>> consumer) {
         BukkitWorld bukkitWorld = new BukkitWorld(world);
         double maxComponent = this.halfExtents.maxComponent();
         ImmutableVector halfExtents = new ImmutableVector(maxComponent, maxComponent, maxComponent);
-        consumer.accept(
-                new CuboidRegion(
-                        bukkitWorld,
-                        halfExtents.negative().add(center).toWorldEditBlockVector(),
-                        halfExtents.add(center).toWorldEditBlockVector()
-                )
-                        .stream()
-                        .filter(position -> this.intersects(
-                                        Colliders.aabb(
-                                                world,
-                                                ImmutableVector.ZERO,
-                                                ImmutableVector.ONE
-                                        ).at(ImmutableVector.of(position))
-                                ) && this.contains(ImmutableVector.of(position))
-                        ).map(position -> AtomChain.of(
-                                        BukkitAdapter.adapt(
-                                                world,
-                                                position
-                                        )
-                                )
-                        )
-        );
+        consumer.accept(new CuboidRegion(
+                bukkitWorld,
+                halfExtents.negative().add(center).toWorldEditBlockVector(),
+                halfExtents.add(center).toWorldEditBlockVector()
+        ).stream().filter(position -> this.intersects(
+                        Colliders.aabb(
+                                world,
+                                ImmutableVector.ZERO,
+                                ImmutableVector.ONE
+                        ).at(ImmutableVector.of(position))
+                ) && this.contains(ImmutableVector.of(position))
+        ).map(position -> BukkitAdapter.adapt(world, position)));
         return this;
     }
 

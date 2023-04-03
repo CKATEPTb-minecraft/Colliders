@@ -1,20 +1,17 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
-import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.bukkit.BukkitWorld;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import dev.ckateptb.minecraft.atom.async.AsyncService;
-import dev.ckateptb.minecraft.atom.async.block.ThreadSafeBlock;
-import dev.ckateptb.minecraft.atom.chain.AtomChain;
-import dev.ckateptb.minecraft.atom.chain.CurrentThreadAtomChain;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 
@@ -92,70 +89,37 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectEntities(Consumer<Stream<CurrentThreadAtomChain<Entity>>> consumer) {
+    public AxisAlignedBoundingBoxCollider affectEntities(Consumer<Stream<Entity>> consumer) {
         AsyncService asyncService = Colliders.getAsyncService();
         ImmutableVector vector = min.max(max);
-        consumer.accept(
-                asyncService.getNearbyEntities(
-                                this.getCenter().toLocation(world),
-                                vector.getX(),
-                                vector.getY(),
-                                vector.getZ()
-                        )
-                        .stream()
-                        .parallel()
-                        .filter(entity -> this.intersects(
-                                        Colliders.aabb(
-                                                entity
-                                        )
-                                )
-                        )
-                        .map(AtomChain::of));
+        consumer.accept(asyncService.getNearbyEntities(
+                this.getCenter().toLocation(world),
+                vector.getX(),
+                vector.getY(),
+                vector.getZ()
+        ).stream().parallel().filter(entity -> this.intersects(Colliders.aabb(entity))));
         return this;
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<Stream<CurrentThreadAtomChain<ThreadSafeBlock>>> consumer) {
+    public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<Stream<Block>> consumer) {
         BukkitWorld bukkitWorld = new BukkitWorld(world);
-        try (EditSession editSession = ThreadSafeBlock.defaultEditSession(bukkitWorld)) {
-            consumer.accept(
-                    new CuboidRegion(
-                            bukkitWorld,
-                            min.toWorldEditBlockVector(),
-                            max.toWorldEditBlockVector()
-                    )
-                            .stream()
-                            .map(blockVector -> AtomChain.of(
-                                            new ThreadSafeBlock(
-                                                    bukkitWorld,
-                                                    blockVector
-                                            )
-                                                    .setEditSession(editSession)
-                                    )
-                            )
-            );
-        }
+        consumer.accept(new CuboidRegion(
+                bukkitWorld,
+                min.toWorldEditBlockVector(),
+                max.toWorldEditBlockVector()
+        ).stream().map(blockVector -> ImmutableVector.of(blockVector).toLocation(world).getBlock()));
         return this;
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectPositions(Consumer<Stream<CurrentThreadAtomChain<Location>>> consumer) {
+    public AxisAlignedBoundingBoxCollider affectPositions(Consumer<Stream<Location>> consumer) {
         BukkitWorld bukkitWorld = new BukkitWorld(world);
-        consumer.accept(
-                new CuboidRegion(
-                        bukkitWorld,
-                        min.toWorldEditBlockVector(),
-                        max.toWorldEditBlockVector()
-                )
-                        .stream()
-                        .map(blockVector -> AtomChain.of(
-                                        BukkitAdapter.adapt(
-                                                world,
-                                                blockVector
-                                        )
-                                )
-                        )
-        );
+        consumer.accept(new CuboidRegion(
+                bukkitWorld,
+                min.toWorldEditBlockVector(),
+                max.toWorldEditBlockVector()
+        ).stream().map(blockVector -> BukkitAdapter.adapt(world, blockVector)));
         return this;
     }
 

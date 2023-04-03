@@ -18,7 +18,7 @@ plugins {
     id("io.papermc.paperweight.userdev").version("1.3.8")
 }
 group = "dev.ckateptb.minecraft"
-version = "1.0.0-SNAPSHOT"
+version = "1.1.0-SNAPSHOT"
 
 val rootPackage = "${project.group}.${project.name.toLowerCase()}"
 val internal = "${rootPackage}.internal"
@@ -33,7 +33,7 @@ dependencies {
     paperDevBundle("1.19.2-R0.1-SNAPSHOT")
 
     compileOnly("dev.ckateptb.minecraft:Nicotine:1.0.1-SNAPSHOT")
-    compileOnly("dev.ckateptb.minecraft:Atom:1.0.3-SNAPSHOT")
+    compileOnly("dev.ckateptb.minecraft:Atom:1.1.0-SNAPSHOT")
     compileOnly("dev.ckateptb.minecraft:Supervisor:1.0.0-SNAPSHOT")
 
     implementation("org.apache.commons:commons-math3:3.6.1")
