@@ -1,13 +1,11 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
-import dev.ckateptb.minecraft.atom.async.block.ThreadSafeBlock;
-import dev.ckateptb.minecraft.atom.chain.AtomChain;
-import dev.ckateptb.minecraft.atom.chain.CurrentThreadAtomChain;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 
@@ -70,53 +68,45 @@ public class CombinedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectEntities(Consumer<Stream<CurrentThreadAtomChain<Entity>>> consumer) {
+    public CombinedBoundingBoxCollider affectEntities(Consumer<Stream<Entity>> consumer) {
         consumer.accept(colliders.flatMap(collider -> {
-                    Set<Entity> entities = ConcurrentHashMap.newKeySet();
-                    collider.affectEntities(stream ->
-                            stream.forEach(chain ->
-                                    entities.add(chain.get())));
-                    return Stream.of(entities.toArray(Entity[]::new));
-                })
-                .parallel()
-                .filter(entity -> {
-                    if (mode == CombinedIntersectsMode.ANY) return true;
-                    return intersectsAll(Colliders.aabb(entity));
-                }).map(AtomChain::of));
+            Set<Entity> entities = ConcurrentHashMap.newKeySet();
+            collider.affectEntities(stream ->
+                    stream.forEach(entities::add));
+            return Stream.of(entities.toArray(Entity[]::new));
+        }).parallel().filter(entity -> {
+            if (mode == CombinedIntersectsMode.ANY) return true;
+            return intersectsAll(Colliders.aabb(entity));
+        }));
         return this;
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectBlocks(Consumer<Stream<CurrentThreadAtomChain<ThreadSafeBlock>>> consumer) {
+    public CombinedBoundingBoxCollider affectBlocks(Consumer<Stream<Block>> consumer) {
         consumer.accept(colliders.flatMap(collider -> {
-                    Set<ThreadSafeBlock> blocks = ConcurrentHashMap.newKeySet();
-                    collider.affectBlocks(stream ->
-                            stream.forEach(chain ->
-                                    blocks.add(chain.get())));
-                    return Stream.of(blocks.toArray(ThreadSafeBlock[]::new));
-                })
-                .filter(threadSafeBlock -> {
-                    if (mode == CombinedIntersectsMode.ANY) return true;
-                    return intersectsAll(Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
-                            .at(threadSafeBlock.getLocation().toVector()));
-                }).map(AtomChain::of));
+            Set<Block> blocks = ConcurrentHashMap.newKeySet();
+            collider.affectBlocks(stream ->
+                    stream.forEach(blocks::add));
+            return Stream.of(blocks.toArray(Block[]::new));
+        }).filter(block -> {
+            if (mode == CombinedIntersectsMode.ANY) return true;
+            return intersectsAll(Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
+                    .at(block.getLocation().toVector()));
+        }));
         return this;
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectPositions(Consumer<Stream<CurrentThreadAtomChain<Location>>> consumer) {
+    public CombinedBoundingBoxCollider affectPositions(Consumer<Stream<Location>> consumer) {
         consumer.accept(colliders.flatMap(collider -> {
-                    Set<Location> locations = ConcurrentHashMap.newKeySet();
-                    collider.affectPositions(stream ->
-                            stream.forEach(chain ->
-                                    locations.add(chain.get())));
-                    return Stream.of(locations.toArray(Location[]::new));
-                })
-                .filter(location -> {
-                    if (mode == CombinedIntersectsMode.ANY) return true;
-                    return intersectsAll(Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
-                            .at(location.toVector()));
-                }).map(AtomChain::of));
+            Set<Location> locations = ConcurrentHashMap.newKeySet();
+            collider.affectPositions(stream -> stream.forEach(locations::add));
+            return Stream.of(locations.toArray(Location[]::new));
+        }).filter(location -> {
+            if (mode == CombinedIntersectsMode.ANY) return true;
+            return intersectsAll(Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
+                    .at(location.toVector()));
+        }));
         return this;
     }
 

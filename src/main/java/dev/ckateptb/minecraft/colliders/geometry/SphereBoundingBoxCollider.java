@@ -2,9 +2,6 @@ package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
 import dev.ckateptb.minecraft.atom.async.AsyncService;
-import dev.ckateptb.minecraft.atom.async.block.ThreadSafeBlock;
-import dev.ckateptb.minecraft.atom.chain.AtomChain;
-import dev.ckateptb.minecraft.atom.chain.CurrentThreadAtomChain;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
@@ -12,6 +9,7 @@ import lombok.Getter;
 import org.apache.commons.math3.util.FastMath;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 
@@ -72,24 +70,24 @@ public class SphereBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public SphereBoundingBoxCollider affectEntities(Consumer<Stream<CurrentThreadAtomChain<Entity>>> consumer) {
+    public SphereBoundingBoxCollider affectEntities(Consumer<Stream<Entity>> consumer) {
         AsyncService asyncService = Colliders.getAsyncService();
         consumer.accept(asyncService.getNearbyEntities(this.getCenter().toLocation(world), radius, radius, radius)
-                .stream().parallel().filter(entity -> this.intersects(Colliders.aabb(entity))).map(AtomChain::of));
+                .stream().parallel().filter(entity -> this.intersects(Colliders.aabb(entity))));
         return this;
     }
 
     @Override
-    public SphereBoundingBoxCollider affectBlocks(Consumer<Stream<CurrentThreadAtomChain<ThreadSafeBlock>>> consumer) {
+    public SphereBoundingBoxCollider affectBlocks(Consumer<Stream<Block>> consumer) {
         ImmutableVector halfExtents = getHalfExtents();
         new AxisAlignedBoundingBoxCollider(world, halfExtents.negative(), halfExtents)
                 .at(center)
-                .affectBlocks(currentThreadAtomChainStream ->
-                        consumer.accept(currentThreadAtomChainStream.filter(chain ->
+                .affectBlocks(syncAtomChainStream ->
+                        consumer.accept(syncAtomChainStream.filter(block ->
                                         this.intersects(new AxisAlignedBoundingBoxCollider(world,
                                                 ImmutableVector.ZERO,
                                                 ImmutableVector.ONE)
-                                                .at(chain.get().getLocation().toCenterLocation().toVector())
+                                                .at(block.getLocation().toCenterLocation().toVector())
                                         )
                                 )
                         )
@@ -98,13 +96,13 @@ public class SphereBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public SphereBoundingBoxCollider affectPositions(Consumer<Stream<CurrentThreadAtomChain<Location>>> consumer) {
+    public SphereBoundingBoxCollider affectPositions(Consumer<Stream<Location>> consumer) {
         ImmutableVector halfExtents = getHalfExtents();
         new AxisAlignedBoundingBoxCollider(world, halfExtents.negative(), halfExtents)
                 .at(center)
-                .affectPositions(currentThreadAtomChainStream ->
-                        consumer.accept(currentThreadAtomChainStream.filter(chain -> {
-                                    Location location = chain.get().toCenterLocation();
+                .affectPositions(stream ->
+                        consumer.accept(stream.filter(loc -> {
+                                    Location location = loc.toCenterLocation();
                                     return this.intersects(new AxisAlignedBoundingBoxCollider(world,
                                             ImmutableVector.ZERO,
                                             ImmutableVector.ONE).at(location.toVector()));
