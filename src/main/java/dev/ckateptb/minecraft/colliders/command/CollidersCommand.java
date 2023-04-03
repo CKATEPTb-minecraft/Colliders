@@ -81,8 +81,9 @@ public class CollidersCommand implements Command<Colliders> {
     private void renderDirect(Collider collider, Player player, Double distance, Long duration) {
         if (duration == null) {
             collider.at(getCenter(distance, player))
-                    .affectBlocks(stream -> Flux.fromIterable(stream.toList())
+                    .affectPositions(stream -> Flux.fromIterable(stream.toList())
                             .parallel()
+                            .map(Location::getBlock)
                             .concatMap(block -> Mono.just(block).delayElement(Duration.of(1, ChronoUnit.MILLIS)))
                             .runOn(new SyncScheduler())
                             .subscribe(block -> block.setType(Material.SAND, false)));

@@ -1,7 +1,6 @@
 package dev.ckateptb.minecraft.colliders.math;
 
 import com.google.common.primitives.Doubles;
-import com.sk89q.worldedit.math.BlockVector3;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.apache.commons.math3.util.FastMath;
 import org.bukkit.Location;
@@ -30,10 +29,6 @@ public class ImmutableVector extends Vector {
     }
 
     public static ImmutableVector of(Vector3D vector) {
-        return new ImmutableVector(vector.getX(), vector.getY(), vector.getZ());
-    }
-
-    public static ImmutableVector of(BlockVector3 vector) {
         return new ImmutableVector(vector.getX(), vector.getY(), vector.getZ());
     }
 
@@ -314,10 +309,6 @@ public class ImmutableVector extends Vector {
     @Override
     public @NotNull ImmutableVector clone() {
         return ImmutableVector.of(super.clone());
-    }
-
-    public BlockVector3 toWorldEditBlockVector() {
-        return BlockVector3.at(x, y, z);
     }
 
     public Vector3D toApacheVector() {

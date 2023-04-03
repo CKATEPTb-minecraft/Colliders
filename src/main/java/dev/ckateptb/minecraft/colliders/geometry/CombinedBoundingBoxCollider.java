@@ -72,7 +72,7 @@ public class CombinedBoundingBoxCollider implements Collider {
         consumer.accept(colliders.flatMap(collider -> {
             Set<Entity> entities = ConcurrentHashMap.newKeySet();
             collider.affectEntities(stream ->
-                    stream.forEach(entities::add));
+                    stream.parallel().forEach(entities::add));
             return Stream.of(entities.toArray(Entity[]::new));
         }).parallel().filter(entity -> {
             if (mode == CombinedIntersectsMode.ANY) return true;
@@ -86,9 +86,9 @@ public class CombinedBoundingBoxCollider implements Collider {
         consumer.accept(colliders.flatMap(collider -> {
             Set<Block> blocks = ConcurrentHashMap.newKeySet();
             collider.affectBlocks(stream ->
-                    stream.forEach(blocks::add));
+                    stream.parallel().forEach(blocks::add));
             return Stream.of(blocks.toArray(Block[]::new));
-        }).filter(block -> {
+        }).parallel().filter(block -> {
             if (mode == CombinedIntersectsMode.ANY) return true;
             return intersectsAll(Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
                     .at(block.getLocation().toVector()));
@@ -100,9 +100,9 @@ public class CombinedBoundingBoxCollider implements Collider {
     public CombinedBoundingBoxCollider affectPositions(Consumer<Stream<Location>> consumer) {
         consumer.accept(colliders.flatMap(collider -> {
             Set<Location> locations = ConcurrentHashMap.newKeySet();
-            collider.affectPositions(stream -> stream.forEach(locations::add));
+            collider.affectPositions(stream -> stream.parallel().forEach(locations::add));
             return Stream.of(locations.toArray(Location[]::new));
-        }).filter(location -> {
+        }).parallel().filter(location -> {
             if (mode == CombinedIntersectsMode.ANY) return true;
             return intersectsAll(Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
                     .at(location.toVector()));

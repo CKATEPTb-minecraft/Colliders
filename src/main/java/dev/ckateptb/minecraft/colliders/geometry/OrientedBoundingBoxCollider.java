@@ -1,9 +1,6 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldedit.bukkit.BukkitWorld;
-import com.sk89q.worldedit.regions.CuboidRegion;
 import dev.ckateptb.minecraft.atom.async.AsyncService;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
@@ -163,41 +160,31 @@ public class OrientedBoundingBoxCollider implements Collider {
 
     @Override
     public Collider affectBlocks(Consumer<Stream<Block>> consumer) {
-        BukkitWorld bukkitWorld = new BukkitWorld(world);
         double maxComponent = this.halfExtents.maxComponent();
         ImmutableVector halfExtents = new ImmutableVector(maxComponent, maxComponent, maxComponent);
-        consumer.accept(new CuboidRegion(
-                bukkitWorld,
-                halfExtents.negative().add(center).toWorldEditBlockVector(),
-                halfExtents.add(center).toWorldEditBlockVector()
-        ).stream().filter(position -> this.intersects(
-                        Colliders.aabb(
-                                world,
-                                ImmutableVector.ZERO,
-                                ImmutableVector.ONE
-                        ).at(ImmutableVector.of(position))
-                ) && this.contains(ImmutableVector.of(position))
-        ).map(position -> ImmutableVector.of(position).toLocation(world).getBlock()));
+        Colliders.aabb(world, halfExtents.negative().add(center), halfExtents.add(center))
+                .affectBlocks(stream ->
+                        consumer.accept(stream.parallel().filter(block ->
+                                this.intersects(Colliders.aabb(block)) &&
+                                        this.contains(ImmutableVector.of(block.getLocation().toBlockLocation()))
+                        )));
         return this;
     }
 
     @Override
     public Collider affectPositions(Consumer<Stream<Location>> consumer) {
-        BukkitWorld bukkitWorld = new BukkitWorld(world);
         double maxComponent = this.halfExtents.maxComponent();
         ImmutableVector halfExtents = new ImmutableVector(maxComponent, maxComponent, maxComponent);
-        consumer.accept(new CuboidRegion(
-                bukkitWorld,
-                halfExtents.negative().add(center).toWorldEditBlockVector(),
-                halfExtents.add(center).toWorldEditBlockVector()
-        ).stream().filter(position -> this.intersects(
-                        Colliders.aabb(
-                                world,
-                                ImmutableVector.ZERO,
-                                ImmutableVector.ONE
-                        ).at(ImmutableVector.of(position))
-                ) && this.contains(ImmutableVector.of(position))
-        ).map(position -> BukkitAdapter.adapt(world, position)));
+        Colliders.aabb(world, halfExtents.negative().add(center), halfExtents.add(center))
+                .affectPositions(stream ->
+                        consumer.accept(stream.parallel().filter(position -> this.intersects(
+                                        Colliders.aabb(
+                                                world,
+                                                ImmutableVector.ZERO,
+                                                ImmutableVector.ONE
+                                        ).at(ImmutableVector.of(position))
+                                ) && this.contains(ImmutableVector.of(position))
+                        )));
         return this;
     }
 

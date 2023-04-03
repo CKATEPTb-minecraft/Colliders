@@ -82,8 +82,8 @@ public class SphereBoundingBoxCollider implements Collider {
         ImmutableVector halfExtents = getHalfExtents();
         new AxisAlignedBoundingBoxCollider(world, halfExtents.negative(), halfExtents)
                 .at(center)
-                .affectBlocks(syncAtomChainStream ->
-                        consumer.accept(syncAtomChainStream.filter(block ->
+                .affectBlocks(stream ->
+                        consumer.accept(stream.parallel().filter(block ->
                                         this.intersects(new AxisAlignedBoundingBoxCollider(world,
                                                 ImmutableVector.ZERO,
                                                 ImmutableVector.ONE)
@@ -101,7 +101,7 @@ public class SphereBoundingBoxCollider implements Collider {
         new AxisAlignedBoundingBoxCollider(world, halfExtents.negative(), halfExtents)
                 .at(center)
                 .affectPositions(stream ->
-                        consumer.accept(stream.filter(loc -> {
+                        consumer.accept(stream.parallel().filter(loc -> {
                                     Location location = loc.toCenterLocation();
                                     return this.intersects(new AxisAlignedBoundingBoxCollider(world,
                                             ImmutableVector.ZERO,
