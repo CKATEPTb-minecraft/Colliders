@@ -78,6 +78,19 @@ public class CollidersCommand implements Command<Colliders> {
         );
     }
 
+    @CommandMethod("colliders debug direct ray <distance> <size> [duration]")
+    @CommandPermission("colliders.admin")
+    public void rayDirect(Player player, @Argument("distance") Double distance, @Argument("size") Double size, @Argument("duration") Long duration) {
+        Location eyeLocation = player.getEyeLocation();
+        Vector direction = eyeLocation.getDirection();
+        this.renderDirect(
+                Colliders.ray(player.getWorld(), eyeLocation.toVector(), direction, distance, size),
+                player,
+                0d,
+                duration
+        );
+    }
+
     private void renderDirect(Collider collider, Player player, Double distance, Long duration) {
         if (duration == null) {
             collider.at(getCenter(distance, player))

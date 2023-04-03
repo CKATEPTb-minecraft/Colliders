@@ -2,10 +2,7 @@ package dev.ckateptb.minecraft.colliders;
 
 import dev.ckateptb.common.tableclothcontainer.IoC;
 import dev.ckateptb.minecraft.atom.async.AsyncService;
-import dev.ckateptb.minecraft.colliders.geometry.AxisAlignedBoundingBoxCollider;
-import dev.ckateptb.minecraft.colliders.geometry.CombinedBoundingBoxCollider;
-import dev.ckateptb.minecraft.colliders.geometry.OrientedBoundingBoxCollider;
-import dev.ckateptb.minecraft.colliders.geometry.SphereBoundingBoxCollider;
+import dev.ckateptb.minecraft.colliders.geometry.*;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -77,5 +74,9 @@ public class Colliders extends JavaPlugin {
 
     public static OrientedBoundingBoxCollider obb(World world, Vector center, Vector max, EulerAngle eulerAngle) {
         return new OrientedBoundingBoxCollider(world, ImmutableVector.of(center), ImmutableVector.of(max), eulerAngle);
+    }
+
+    public static RayTraceCollider ray(World world, Vector center, Vector direction, double distance, double size) {
+        return new RayTraceCollider(world, ImmutableVector.of(center), ImmutableVector.of(direction), distance, size);
     }
 }
