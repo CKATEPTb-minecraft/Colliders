@@ -8,6 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.EulerAngle;
@@ -74,6 +75,11 @@ public class Colliders extends JavaPlugin {
 
     public static OrientedBoundingBoxCollider obb(World world, Vector center, Vector max, EulerAngle eulerAngle) {
         return new OrientedBoundingBoxCollider(world, ImmutableVector.of(center), ImmutableVector.of(max), eulerAngle);
+    }
+
+    public static RayTraceCollider ray(LivingEntity entity, double distance, double size) {
+        Location eyeLocation = entity.getEyeLocation();
+        return ray(entity.getWorld(), eyeLocation.toVector(), eyeLocation.getDirection(),distance, size);
     }
 
     public static RayTraceCollider ray(World world, Vector center, Vector direction, double distance, double size) {
