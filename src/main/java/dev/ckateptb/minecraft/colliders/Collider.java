@@ -6,9 +6,9 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
+import reactor.core.publisher.ParallelFlux;
 
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 public interface Collider {
     Collider at(Vector center);
@@ -21,13 +21,17 @@ public interface Collider {
 
     boolean contains(Vector vector);
 
-    Collider affectEntities(Consumer<Stream<Entity>> consumer);
+    Collider affectEntities(Consumer<ParallelFlux<Entity>> consumer);
 
-    Collider affectBlocks(Consumer<Stream<Block>> consumer);
+    Collider affectBlocks(Consumer<ParallelFlux<Block>> consumer);
 
-    Collider affectPositions(Consumer<Stream<Location>> consumer);
+    Collider affectLocations(Consumer<ParallelFlux<Location>> consumer);
 
     World getWorld();
 
     ImmutableVector getCenter();
+
+    default <T extends Collider> T at(Location location) {
+        return (T) this.at(ImmutableVector.of(location));
+    }
 }

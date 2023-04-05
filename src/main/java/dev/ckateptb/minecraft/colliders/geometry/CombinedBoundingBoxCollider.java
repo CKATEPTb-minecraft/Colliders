@@ -8,37 +8,41 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.ParallelFlux;
 
 import java.util.Arrays;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 public class CombinedBoundingBoxCollider implements Collider {
     private final World world;
     private final CombinedIntersectsMode mode;
-    private final Stream<Collider> colliders;
+    private final Collider[] colliders;
 
     public CombinedBoundingBoxCollider(World world, CombinedIntersectsMode mode, Collider... colliders) {
         this.world = world;
         this.mode = mode;
-        this.colliders = Arrays.stream(colliders);
+        this.colliders = colliders;
     }
 
     @Override
     public CombinedBoundingBoxCollider at(Vector center) {
-        return new CombinedBoundingBoxCollider(world, mode, this.colliders.map(collider -> collider.at(center)).toArray(Collider[]::new));
+        return new CombinedBoundingBoxCollider(world, mode, this.getColliders().map(collider ->
+                collider.at(center)).toArray(Collider[]::new));
     }
 
     @Override
     public CombinedBoundingBoxCollider scale(double amount) {
-        return new CombinedBoundingBoxCollider(world, mode, this.colliders.map(collider -> collider.scale(amount)).toArray(Collider[]::new));
+        return new CombinedBoundingBoxCollider(world, mode, this.getColliders().map(collider ->
+                collider.scale(amount)).toArray(Collider[]::new));
     }
 
     @Override
     public ImmutableVector getHalfExtents() {
-        return colliders.findFirst().map(Collider::getHalfExtents).orElse(ImmutableVector.ZERO);
+        return this.getColliders().findFirst().map(Collider::getHalfExtents).orElse(ImmutableVector.ZERO);
     }
 
     @Override
@@ -47,11 +51,11 @@ public class CombinedBoundingBoxCollider implements Collider {
     }
 
     public boolean intersectsAny(Collider other) {
-        return colliders.anyMatch(collider -> collider.intersects(other));
+        return this.getColliders().anyMatch(collider -> collider.intersects(other));
     }
 
     public boolean intersectsAll(Collider other) {
-        return colliders.allMatch(collider -> collider.intersects(other));
+        return this.getColliders().allMatch(collider -> collider.intersects(other));
     }
 
     @Override
@@ -60,54 +64,48 @@ public class CombinedBoundingBoxCollider implements Collider {
     }
 
     public boolean containsAny(Vector vector) {
-        return colliders.anyMatch(collider -> collider.contains(vector));
+        return this.getColliders().anyMatch(collider -> collider.contains(vector));
     }
 
     public boolean containsAll(Vector vector) {
-        return colliders.allMatch(collider -> collider.contains(vector));
+        return this.getColliders().allMatch(collider -> collider.contains(vector));
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectEntities(Consumer<Stream<Entity>> consumer) {
-        consumer.accept(colliders.flatMap(collider -> {
-            Set<Entity> entities = ConcurrentHashMap.newKeySet();
-            collider.affectEntities(stream ->
-                    stream.parallel().forEach(entities::add));
-            return Stream.of(entities.toArray(Entity[]::new));
-        }).parallel().filter(entity -> {
-            if (mode == CombinedIntersectsMode.ANY) return true;
-            return intersectsAll(Colliders.aabb(entity));
-        }));
+    public CombinedBoundingBoxCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
+        consumer.accept(applyFilter(Flux.fromArray(colliders).parallel().flatMap(collider -> {
+            AtomicReference<ParallelFlux<Entity>> atomicReference = new AtomicReference<>();
+            collider.affectEntities(atomicReference::set);
+            return atomicReference.get();
+        }), Colliders::aabb));
         return this;
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectBlocks(Consumer<Stream<Block>> consumer) {
-        consumer.accept(colliders.flatMap(collider -> {
-            Set<Block> blocks = ConcurrentHashMap.newKeySet();
-            collider.affectBlocks(stream ->
-                    stream.parallel().forEach(blocks::add));
-            return Stream.of(blocks.toArray(Block[]::new));
-        }).parallel().filter(block -> {
-            if (mode == CombinedIntersectsMode.ANY) return true;
-            return intersectsAll(Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
-                    .at(block.getLocation().toVector()));
-        }));
+    public CombinedBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
+        consumer.accept(applyFilter(Flux.fromArray(colliders).parallel().flatMap(collider -> {
+            AtomicReference<ParallelFlux<Block>> atomicReference = new AtomicReference<>();
+            collider.affectBlocks(atomicReference::set);
+            return atomicReference.get();
+        }), Colliders::aabb));
         return this;
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectPositions(Consumer<Stream<Location>> consumer) {
-        consumer.accept(colliders.flatMap(collider -> {
-            Set<Location> locations = ConcurrentHashMap.newKeySet();
-            collider.affectPositions(stream -> stream.parallel().forEach(locations::add));
-            return Stream.of(locations.toArray(Location[]::new));
-        }).parallel().filter(location -> {
-            if (mode == CombinedIntersectsMode.ANY) return true;
-            return intersectsAll(Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
-                    .at(location.toVector()));
-        }));
+    public CombinedBoundingBoxCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+        consumer.accept(applyFilter(Flux.fromArray(colliders).parallel().flatMap(collider -> {
+            AtomicReference<ParallelFlux<Location>> atomicReference = new AtomicReference<>();
+            collider.affectLocations(atomicReference::set);
+            return atomicReference.get();
+        }), Colliders::aabb));
         return this;
+    }
+
+    private <T> ParallelFlux<T> applyFilter(ParallelFlux<T> flux, Function<T, Collider> getter) {
+        return flux.filter(t -> {
+            Collider aabb = getter.apply(t);
+            return mode == CombinedIntersectsMode.ANY || intersectsAll(aabb);
+        });
     }
 
     @Override
@@ -117,7 +115,11 @@ public class CombinedBoundingBoxCollider implements Collider {
 
     @Override
     public ImmutableVector getCenter() {
-        return colliders.findFirst().map(Collider::getCenter).orElse(ImmutableVector.ZERO);
+        return this.getColliders().findFirst().map(Collider::getCenter).orElse(ImmutableVector.ZERO);
+    }
+
+    public Stream<Collider> getColliders() {
+        return Arrays.stream(colliders);
     }
 
     public enum CombinedIntersectsMode {

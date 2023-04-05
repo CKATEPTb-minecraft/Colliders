@@ -14,8 +14,11 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 
+import java.util.function.Function;
+
 public class Colliders extends JavaPlugin {
     private static AsyncService asyncService;
+    public static final Function<World, AxisAlignedBoundingBoxCollider> BLOCK = world -> Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE);
 
     public static AsyncService getAsyncService() {
         return asyncService == null ? asyncService = IoC.getBean(AsyncService.class) : asyncService;
@@ -46,6 +49,10 @@ public class Colliders extends JavaPlugin {
         ImmutableVector min = new ImmutableVector(box.getMinX(), box.getMinY(), box.getMinZ());
         ImmutableVector max = new ImmutableVector(box.getMaxX(), box.getMaxY(), box.getMaxZ());
         return new AxisAlignedBoundingBoxCollider(world, min, max);
+    }
+
+    public static AxisAlignedBoundingBoxCollider aabb(Location location) {
+        return BLOCK.apply(location.getWorld()).at(location);
     }
 
     public static AxisAlignedBoundingBoxCollider aabb(World world, Vector half) {
