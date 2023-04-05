@@ -11,11 +11,13 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.ParallelFlux;
+import reactor.core.publisher.Sinks;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 @Getter
 public class AxisAlignedBoundingBoxCollider implements Collider {
@@ -84,52 +86,53 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
         if (other instanceof OrientedBoundingBoxCollider obb) {
             return obb.intersects(this);
         }
+        if (other instanceof RayTraceCollider ray) {
+            return ray.intersects(this);
+        }
         return false;
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectEntities(Consumer<Stream<Entity>> consumer) {
+    public AxisAlignedBoundingBoxCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
         AsyncService asyncService = Colliders.getAsyncService();
         ImmutableVector vector = min.max(max);
-        consumer.accept(asyncService.getNearbyEntities(
+        consumer.accept(Flux.fromIterable(asyncService.getNearbyEntities(
                 this.getCenter().toLocation(world),
                 vector.getX(),
                 vector.getY(),
                 vector.getZ()
-        ).stream().parallel().filter(entity -> this.intersects(Colliders.aabb(entity))));
+        )).parallel().filter(entity -> this.intersects(Colliders.aabb(entity))));
         return this;
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<Stream<Block>> consumer) {
-        this.affectPositions(stream ->
-                consumer.accept(stream.parallel().map(Location::getBlock).filter(block ->
-                        Colliders.aabb(block).intersects(this))));
+    public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
+        this.affectLocations(flux -> consumer.accept(flux.map(Location::getBlock)
+                .filter(block -> Colliders.aabb(block).intersects(this))));
         return this;
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectPositions(Consumer<Stream<Location>> consumer) {
+    public AxisAlignedBoundingBoxCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
         ImmutableVector position = this.getCenter();
         double maxExtent = getHalfExtents().maxComponent();
         int radius = (int) (Math.ceil(maxExtent) + 1);
         double originX = position.getX();
         double originY = position.getY();
         double originZ = position.getZ();
-        Set<Location> locations = new HashSet<>();
+        Sinks.Many<Tuple3<Double, Double, Double>> locations = Sinks.many().unicast().onBackpressureBuffer();
         for (double x = originX - radius; x <= originX + radius; x++) {
             for (double y = originY - radius; y <= originY + radius; y++) {
                 for (double z = originZ - radius; z <= originZ + radius; z++) {
-                    ImmutableVector vector = new ImmutableVector(x, y, z);
-                    Location location = vector.toLocation(world).toCenterLocation();
-                    if (Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE)
-                            .at(location.toVector()).intersects(this)) {
-                        locations.add(vector.toLocation(world));
-                    }
+                    locations.tryEmitNext(Tuples.of(x, y, z));
                 }
             }
         }
-        consumer.accept(locations.stream());
+        consumer.accept(locations.asFlux()
+                .parallel()
+                .map(tuple -> new ImmutableVector(tuple.getT1(), tuple.getT2(), tuple.getT3()))
+                .map(vector -> vector.toLocation(world).toCenterLocation())
+                .filter(location -> Colliders.BLOCK.apply(world).at(location).intersects(this)));
         return this;
     }
 

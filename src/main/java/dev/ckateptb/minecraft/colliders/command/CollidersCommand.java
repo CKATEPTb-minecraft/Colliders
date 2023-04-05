@@ -3,29 +3,34 @@ package dev.ckateptb.minecraft.colliders.command;
 import cloud.commandframework.annotations.Argument;
 import cloud.commandframework.annotations.CommandMethod;
 import cloud.commandframework.annotations.CommandPermission;
+import com.destroystokyo.paper.ParticleBuilder;
 import dev.ckateptb.common.tableclothcontainer.IoC;
 import dev.ckateptb.common.tableclothcontainer.annotation.Component;
 import dev.ckateptb.minecraft.atom.scheduler.SyncScheduler;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.geometry.OrientedBoundingBoxCollider;
+import dev.ckateptb.minecraft.colliders.geometry.SphereBoundingBoxCollider;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
+import dev.ckateptb.minecraft.nicotine.annotation.Schedule;
 import dev.ckateptb.minecraft.supervisor.Command;
 import lombok.Getter;
-import org.bukkit.Color;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
+import org.bukkit.*;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component
 public class CollidersCommand implements Command<Colliders> {
     private final Colliders plugin;
+    private final Set<Collider> colliders = new HashSet<>();
 
     public CollidersCommand() {
         this.plugin = IoC.getBean(Colliders.class);
@@ -50,6 +56,13 @@ public class CollidersCommand implements Command<Colliders> {
         );
     }
 
+    @CommandMethod("colliders debug static aabb <x> <y> <z>")
+    @CommandPermission("colliders.admin")
+    public void aabbStatic(Player player, @Argument("x") Double x, @Argument("y") Double y, @Argument("z") Double z) {
+        ImmutableVector immutableVector = new ImmutableVector(x, y, z);
+        colliders.add(Colliders.aabb(player.getWorld(), immutableVector.negative(), immutableVector).at(player.getLocation()));
+    }
+
     @CommandMethod("colliders debug direct sphere <radius> [duration]")
     @CommandPermission("colliders.admin")
     public void sphereDirect(Player player, @Argument("radius") Double radius, @Argument("duration") Long duration) {
@@ -59,6 +72,12 @@ public class CollidersCommand implements Command<Colliders> {
                 radius + 3,
                 duration
         );
+    }
+
+    @CommandMethod("colliders debug static sphere <radius>")
+    @CommandPermission("colliders.admin")
+    public void sphereStatic(Player player, @Argument("radius") Double radius) {
+        colliders.add(Colliders.sphere(player.getWorld(), ImmutableVector.ZERO, radius).at(player.getLocation()));
     }
 
     @CommandMethod("colliders debug direct obb <x> <y> <z> [duration]")
@@ -78,6 +97,18 @@ public class CollidersCommand implements Command<Colliders> {
         );
     }
 
+    @CommandMethod("colliders debug static obb <x> <y> <z>")
+    @CommandPermission("colliders.admin")
+    public void obbStatic(Player player, @Argument("x") Double x, @Argument("y") Double y, @Argument("z") Double z) {
+        ImmutableVector immutableVector = new ImmutableVector(x, y, z);
+        Location location = player.getLocation();
+        float pitch = location.getPitch();
+        float yaw = location.getYaw();
+        float roll = 0;
+        EulerAngle eulerAngle = new ImmutableVector(pitch, yaw, roll).radians().toEulerAngle();
+        colliders.add(Colliders.obb(player.getWorld(), ImmutableVector.ZERO, immutableVector, eulerAngle).at(location));
+    }
+
     @CommandMethod("colliders debug direct ray <distance> <size> [duration]")
     @CommandPermission("colliders.admin")
     public void rayDirect(Player player, @Argument("distance") Double distance, @Argument("size") Double size, @Argument("duration") Long duration) {
@@ -91,11 +122,87 @@ public class CollidersCommand implements Command<Colliders> {
         );
     }
 
+    @CommandMethod("colliders debug static ray <distance> <size>")
+    @CommandPermission("colliders.admin")
+    public void rayStatic(Player player, @Argument("distance") Double distance, @Argument("size") Double size) {
+        Location eyeLocation = player.getEyeLocation();
+        Vector direction = eyeLocation.getDirection();
+        colliders.add(Colliders.ray(player.getWorld(), ImmutableVector.ZERO, direction, distance, size).at(eyeLocation));
+    }
+
+    @CommandMethod("colliders debug direct disc <x> <y> <z> [duration]")
+    @CommandPermission("colliders.admin")
+    public void discDirect(Player player, @Argument("x") Double x, @Argument("y") Double y, @Argument("z") Double z, @Argument("duration") Long duration) {
+        ImmutableVector immutableVector = new ImmutableVector(x, y, z);
+        Location location = player.getLocation();
+        float pitch = location.getPitch();
+        float yaw = location.getYaw();
+        float roll = 0;
+        EulerAngle eulerAngle = new ImmutableVector(pitch, yaw, roll).radians().toEulerAngle();
+        World world = player.getWorld();
+        OrientedBoundingBoxCollider obb = Colliders.obb(world, ImmutableVector.ZERO, immutableVector, eulerAngle);
+        SphereBoundingBoxCollider sphere = Colliders.sphere(world, ImmutableVector.ZERO, immutableVector.maxComponent() * 0.75);
+        this.renderDirect(
+                Colliders.disk(world, obb, sphere),
+                player,
+                immutableVector.maxComponent() + 3,
+                duration
+        );
+    }
+
+    @CommandMethod("colliders debug static disc <x> <y> <z>")
+    @CommandPermission("colliders.admin")
+    public void discStatic(Player player, @Argument("x") Double x, @Argument("y") Double y, @Argument("z") Double z) {
+        ImmutableVector immutableVector = new ImmutableVector(x, y, z);
+        Location location = player.getLocation();
+        float pitch = location.getPitch();
+        float yaw = location.getYaw();
+        float roll = 0;
+        EulerAngle eulerAngle = new ImmutableVector(pitch, yaw, roll).radians().toEulerAngle();
+        World world = player.getWorld();
+        OrientedBoundingBoxCollider obb = Colliders.obb(world, ImmutableVector.ZERO, immutableVector, eulerAngle);
+        SphereBoundingBoxCollider sphere = Colliders.sphere(world, ImmutableVector.ZERO, immutableVector.maxComponent() * 0.75);
+        colliders.add(Colliders.disk(world, obb, sphere).at(location));
+    }
+
+    @CommandMethod("colliders debug static clear")
+    @CommandPermission("colliders.admin")
+    public void clearStatic() {
+        colliders.clear();
+    }
+
+    @Schedule(async = true, fixedRate = 5, initialDelay = 0)
+    public void renderStatic() {
+        Collider[] colliders = this.colliders.toArray(Collider[]::new);
+        for (Collider collider : colliders) {
+            collider.affectEntities(flux -> flux.runOn(new SyncScheduler()).subscribe(entity -> {
+                if (entity instanceof LivingEntity livingEntity) {
+                    livingEntity.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 5, 1));
+                }
+            }));
+            collider.affectLocations(flux -> flux.runOn(Schedulers.boundedElastic()).subscribe(location -> {
+                ParticleBuilder particle = Particle.REDSTONE.builder().force(true).location(location).count(1);
+                if (Arrays.stream(colliders).anyMatch(other -> {
+                    if (collider == other) return false;
+                    return other.contains(location.toVector());
+                })) {
+                    particle.color(Color.RED, 3.5f).spawn();
+                } else if (Arrays.stream(colliders).anyMatch(other -> {
+                    if (collider == other) return false;
+                    return other.intersects(collider);
+                })) {
+                    particle.color(Color.BLUE, 0.5f).spawn();
+                } else {
+                    particle.color(Color.GREEN, 0.5f).spawn();
+                }
+            }));
+        }
+    }
+
     private void renderDirect(Collider collider, Player player, Double distance, Long duration) {
         if (duration == null) {
             collider.at(getCenter(distance, player))
-                    .affectPositions(stream -> Flux.fromIterable(stream.toList())
-                            .parallel()
+                    .affectLocations(flux -> flux
                             .map(Location::getBlock)
                             .concatMap(block -> Mono.just(block).delayElement(Duration.of(1, ChronoUnit.MILLIS)))
                             .runOn(new SyncScheduler())
@@ -116,12 +223,9 @@ public class CollidersCommand implements Command<Colliders> {
                             eulerAngle));
                 }
                 colliderReference.get().at(getCenter(distance, player))
-                        .affectPositions(stream ->
-                                stream.forEach(location ->
-                                        Particle.REDSTONE.builder().force(true)
-                                                .location(location).count(1).color(Color.RED, 0.5f).spawn()
-                                )
-                        );
+                        .affectLocations(flux -> flux.subscribe(location ->
+                                Particle.REDSTONE.builder().force(true).location(location)
+                                        .count(1).color(Color.RED, 0.5f).spawn()));
             }, 0, 200, TimeUnit.MILLISECONDS);
             Schedulers.single().schedule(disposable::dispose, duration, TimeUnit.MILLISECONDS);
         }

@@ -11,12 +11,12 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.*;
+import reactor.core.publisher.ParallelFlux;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 public class RayTraceCollider implements Collider {
     @Getter
@@ -63,18 +63,18 @@ public class RayTraceCollider implements Collider {
     }
 
     @Override
-    public Collider affectEntities(Consumer<Stream<Entity>> consumer) {
+    public Collider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
         return this.orientedBoundingBoxCollider.affectEntities(consumer);
     }
 
     @Override
-    public Collider affectBlocks(Consumer<Stream<Block>> consumer) {
+    public Collider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
         return this.orientedBoundingBoxCollider.affectBlocks(consumer);
     }
 
     @Override
-    public Collider affectPositions(Consumer<Stream<Location>> consumer) {
-        return this.orientedBoundingBoxCollider.affectPositions(consumer);
+    public Collider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+        return this.orientedBoundingBoxCollider.affectLocations(consumer);
     }
 
     private OrientedBoundingBoxCollider toOrientedBoundingBox() {

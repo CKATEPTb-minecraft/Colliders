@@ -1,7 +1,6 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
-import dev.ckateptb.minecraft.atom.async.AsyncService;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
@@ -14,9 +13,10 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
+import reactor.core.publisher.ParallelFlux;
 
 import java.util.function.Consumer;
-import java.util.stream.Stream;
+import java.util.function.Function;
 
 @Getter
 public class OrientedBoundingBoxCollider implements Collider {
@@ -80,7 +80,7 @@ public class OrientedBoundingBoxCollider implements Collider {
         if (other instanceof OrientedBoundingBoxCollider obb) {
             ImmutableVector centerDifference = obb.center.subtract(this.center);
             for (int i = 0; i < 15; i++) {
-                ImmutableVector current = this.getByIndex(i, obb);
+                ImmutableVector current = this.getByIndex(i, obb);;
                 if (projectionOnAxis(centerDifference, current) >
                         projectionOnAxis(this.right.multiply(this.halfExtents.getX()), current) +
                                 projectionOnAxis(this.up.multiply(this.halfExtents.getY()), current) +
@@ -94,11 +94,15 @@ public class OrientedBoundingBoxCollider implements Collider {
             return true;
         }
         if (other instanceof AxisAlignedBoundingBoxCollider aabb) {
-            return this.intersects(new OrientedBoundingBoxCollider(aabb, EulerAngle.ZERO));
+            return this.intersects(new OrientedBoundingBoxCollider(aabb, EulerAngle.ZERO))
+                    && aabb.contains(this.getClosestPosition(aabb.getCenter()));
         }
         if (other instanceof SphereBoundingBoxCollider sphere) {
             ImmutableVector distance = sphere.center.subtract(getClosestPosition(sphere.center));
             return distance.dot(distance) <= sphere.radius * sphere.radius;
+        }
+        if (other instanceof RayTraceCollider ray) {
+            return ray.intersects(this);
         }
         return false;
     }
@@ -145,47 +149,31 @@ public class OrientedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public Collider affectEntities(Consumer<Stream<Entity>> consumer) {
-        double max = halfExtents.maxComponent();
-        AsyncService asyncService = Colliders.getAsyncService();
-        consumer.accept(asyncService.getNearbyEntities(
-                this.getCenter().toLocation(world),
-                max, max, max
-        ).stream().parallel().filter(entity -> {
-            AxisAlignedBoundingBoxCollider aabb = Colliders.aabb(entity);
-            return this.intersects(aabb) && this.contains(this.getClosestPosition(aabb.getCenter()));
-        }));
+    public Collider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
+        this.wrapToAABB().affectEntities(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
     @Override
-    public Collider affectBlocks(Consumer<Stream<Block>> consumer) {
-        double maxComponent = this.halfExtents.maxComponent();
-        ImmutableVector halfExtents = new ImmutableVector(maxComponent, maxComponent, maxComponent);
-        Colliders.aabb(world, halfExtents.negative().add(center), halfExtents.add(center))
-                .affectBlocks(stream ->
-                        consumer.accept(stream.parallel().filter(block ->
-                                this.intersects(Colliders.aabb(block)) &&
-                                        this.contains(ImmutableVector.of(block.getLocation().toBlockLocation()))
-                        )));
+    public Collider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
+        this.wrapToAABB().affectBlocks(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
     @Override
-    public Collider affectPositions(Consumer<Stream<Location>> consumer) {
+    public Collider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+        this.wrapToAABB().affectLocations(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
+        return this;
+    }
+
+    private <T> ParallelFlux<T> applyFilter(ParallelFlux<T> flux, Function<T, Collider> getter) {
+        return flux.filter(t -> this.intersects(getter.apply(t)));
+    }
+
+    private Collider wrapToAABB() {
         double maxComponent = this.halfExtents.maxComponent();
         ImmutableVector halfExtents = new ImmutableVector(maxComponent, maxComponent, maxComponent);
-        Colliders.aabb(world, halfExtents.negative().add(center), halfExtents.add(center))
-                .affectPositions(stream ->
-                        consumer.accept(stream.parallel().filter(position -> this.intersects(
-                                        Colliders.aabb(
-                                                world,
-                                                ImmutableVector.ZERO,
-                                                ImmutableVector.ONE
-                                        ).at(ImmutableVector.of(position))
-                                ) && this.contains(ImmutableVector.of(position))
-                        )));
-        return this;
+        return Colliders.aabb(world, halfExtents.negative().add(center), halfExtents.add(center));
     }
 
     @Override

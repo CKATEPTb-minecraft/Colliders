@@ -1,7 +1,6 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
-import dev.ckateptb.minecraft.atom.async.AsyncService;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
@@ -12,9 +11,10 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
+import reactor.core.publisher.ParallelFlux;
 
 import java.util.function.Consumer;
-import java.util.stream.Stream;
+import java.util.function.Function;
 
 @Getter
 public class SphereBoundingBoxCollider implements Collider {
@@ -61,6 +61,9 @@ public class SphereBoundingBoxCollider implements Collider {
         if (other instanceof OrientedBoundingBoxCollider obb) {
             return obb.intersects(this);
         }
+        if (other instanceof RayTraceCollider ray) {
+            return ray.intersects(this);
+        }
         return false;
     }
 
@@ -70,46 +73,33 @@ public class SphereBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public SphereBoundingBoxCollider affectEntities(Consumer<Stream<Entity>> consumer) {
-        AsyncService asyncService = Colliders.getAsyncService();
-        consumer.accept(asyncService.getNearbyEntities(this.getCenter().toLocation(world), radius, radius, radius)
-                .stream().parallel().filter(entity -> this.intersects(Colliders.aabb(entity))));
+    public SphereBoundingBoxCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
+        this.wrapToAABB().affectEntities(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
     @Override
-    public SphereBoundingBoxCollider affectBlocks(Consumer<Stream<Block>> consumer) {
-        ImmutableVector halfExtents = getHalfExtents();
-        new AxisAlignedBoundingBoxCollider(world, halfExtents.negative(), halfExtents)
-                .at(center)
-                .affectBlocks(stream ->
-                        consumer.accept(stream.parallel().filter(block ->
-                                        this.intersects(new AxisAlignedBoundingBoxCollider(world,
-                                                ImmutableVector.ZERO,
-                                                ImmutableVector.ONE)
-                                                .at(block.getLocation().toCenterLocation().toVector())
-                                        )
-                                )
-                        )
-                );
+    public SphereBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
+        this.wrapToAABB().affectBlocks(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
     @Override
-    public SphereBoundingBoxCollider affectPositions(Consumer<Stream<Location>> consumer) {
-        ImmutableVector halfExtents = getHalfExtents();
-        new AxisAlignedBoundingBoxCollider(world, halfExtents.negative(), halfExtents)
-                .at(center)
-                .affectPositions(stream ->
-                        consumer.accept(stream.parallel().filter(loc -> {
-                                    Location location = loc.toCenterLocation();
-                                    return this.intersects(new AxisAlignedBoundingBoxCollider(world,
-                                            ImmutableVector.ZERO,
-                                            ImmutableVector.ONE).at(location.toVector()));
-                                })
-                        )
-                );
+    public SphereBoundingBoxCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+        this.wrapToAABB().affectLocations(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
+    }
+
+    private <T> ParallelFlux<T> applyFilter(ParallelFlux<T> flux, Function<T, Collider> getter) {
+        return flux.filter(t -> {
+            Collider aabb = getter.apply(t);
+            return this.intersects(aabb);
+        });
+    }
+
+    private Collider wrapToAABB() {
+        ImmutableVector halfExtents = this.getHalfExtents();
+        return Colliders.aabb(world, halfExtents.negative().add(center), halfExtents.add(center));
     }
 
     @Override
