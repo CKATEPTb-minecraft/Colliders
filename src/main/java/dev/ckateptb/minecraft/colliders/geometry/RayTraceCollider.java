@@ -14,6 +14,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.util.*;
 import reactor.core.publisher.ParallelFlux;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -149,7 +150,29 @@ public class RayTraceCollider implements Collider {
     }
 
     public Optional<Entity> getEntity(Predicate<Entity> filter, double distance) {
-        RayTraceResult traceResult = world.rayTraceEntities(center.toLocation(world), direction, distance, size, filter);
+        Vector startPos = center.toBukkitVector();
+        Vector dir = direction.clone().normalize().multiply(distance);
+        BoundingBox aabb = BoundingBox.of(startPos, startPos).expandDirectional(dir).expand(size);
+        Collection<Entity> entities = Colliders.getAsyncService().getNearbyEntities(startPos.toLocation(world), aabb.getMaxX(), aabb.getMaxY(), aabb.getMaxZ());
+
+        Entity nearestHitEntity = null;
+        RayTraceResult nearestHitResult = null;
+        double nearestDistanceSq = Double.MAX_VALUE;
+
+        for (Entity entity : entities) {
+            if(!filter.test(entity)) continue;
+            BoundingBox boundingBox = entity.getBoundingBox().expand(size);
+            RayTraceResult hitResult = boundingBox.rayTrace(startPos, direction, distance);
+            if (hitResult != null) {
+                double distanceSq = startPos.distanceSquared(hitResult.getHitPosition());
+                if (distanceSq < nearestDistanceSq) {
+                    nearestHitEntity = entity;
+                    nearestHitResult = hitResult;
+                    nearestDistanceSq = distanceSq;
+                }
+            }
+        }
+        RayTraceResult traceResult = (nearestHitEntity == null) ? null : new RayTraceResult(nearestHitResult.getHitPosition(), nearestHitEntity, nearestHitResult.getHitBlockFace());
         if (traceResult == null) return Optional.empty();
         return Optional.ofNullable(traceResult.getHitEntity());
     }
