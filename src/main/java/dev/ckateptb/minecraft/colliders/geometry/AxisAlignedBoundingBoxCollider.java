@@ -40,6 +40,11 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
     }
 
     @Override
+    public AxisAlignedBoundingBoxCollider grow(Vector vector) {
+        return new AxisAlignedBoundingBoxCollider(world, min.subtract(vector), max.add(vector));
+    }
+
+    @Override
     public AxisAlignedBoundingBoxCollider scale(double multiplier) {
         return this.scale(multiplier, multiplier, multiplier);
     }

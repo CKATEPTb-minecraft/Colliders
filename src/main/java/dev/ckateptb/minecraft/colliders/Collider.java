@@ -27,6 +27,8 @@ public interface Collider {
 
     Collider affectLocations(Consumer<ParallelFlux<Location>> consumer);
 
+    Collider grow(Vector vector);
+
     World getWorld();
 
     ImmutableVector getCenter();

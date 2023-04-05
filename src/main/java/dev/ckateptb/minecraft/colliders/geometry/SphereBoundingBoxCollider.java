@@ -34,6 +34,11 @@ public class SphereBoundingBoxCollider implements Collider {
     }
 
     @Override
+    public Collider grow(Vector vector) {
+        return new SphereBoundingBoxCollider(world, center, radius + FastMath.max(FastMath.max(vector.getX(), vector.getY()), vector.getZ()));
+    }
+
+    @Override
     public SphereBoundingBoxCollider scale(double amount) {
         return new SphereBoundingBoxCollider(world, center, radius * amount);
     }
