@@ -135,11 +135,11 @@ public class RayTraceCollider implements Collider {
         return Optional.empty();
     }
 
-    private Optional<Entity> getEntity(Predicate<Entity> filter) {
-        return this.getEntity(filter);
+    public Optional<Entity> getEntity(Predicate<Entity> filter) {
+        return this.getEntity(filter, this.distance);
     }
 
-    private Optional<Entity> getEntity(Predicate<Entity> filter, double distance) {
+    public Optional<Entity> getEntity(Predicate<Entity> filter, double distance) {
         RayTraceResult traceResult = world.rayTraceEntities(center.toLocation(world), direction, distance, size, filter);
         if (traceResult == null) return Optional.empty();
         return Optional.ofNullable(traceResult.getHitEntity());
