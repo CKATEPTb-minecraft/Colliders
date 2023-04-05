@@ -4,6 +4,7 @@ import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import lombok.Getter;
+import org.apache.commons.math3.util.FastMath;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -38,12 +39,17 @@ public class RayTraceCollider implements Collider {
     }
 
     @Override
-    public Collider at(Vector center) {
+    public RayTraceCollider at(Vector center) {
         return new RayTraceCollider(world, ImmutableVector.of(center), direction, distance, size);
     }
 
     @Override
-    public Collider scale(double amount) {
+    public RayTraceCollider grow(Vector vector) {
+        return new RayTraceCollider(world, center, direction, distance + vector.getZ(), size + FastMath.max(vector.getX(), vector.getY()));
+    }
+
+    @Override
+    public RayTraceCollider scale(double amount) {
         return null;
     }
 
@@ -63,18 +69,21 @@ public class RayTraceCollider implements Collider {
     }
 
     @Override
-    public Collider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
-        return this.orientedBoundingBoxCollider.affectEntities(consumer);
+    public RayTraceCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
+        this.orientedBoundingBoxCollider.affectEntities(consumer);
+        return this;
     }
 
     @Override
-    public Collider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
-        return this.orientedBoundingBoxCollider.affectBlocks(consumer);
+    public RayTraceCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
+        this.orientedBoundingBoxCollider.affectBlocks(consumer);
+        return this;
     }
 
     @Override
-    public Collider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
-        return this.orientedBoundingBoxCollider.affectLocations(consumer);
+    public RayTraceCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+        this.orientedBoundingBoxCollider.affectLocations(consumer);
+        return this;
     }
 
     private OrientedBoundingBoxCollider toOrientedBoundingBox() {

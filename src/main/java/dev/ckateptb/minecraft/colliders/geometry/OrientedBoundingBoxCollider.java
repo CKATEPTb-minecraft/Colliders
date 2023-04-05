@@ -56,6 +56,11 @@ public class OrientedBoundingBoxCollider implements Collider {
         this.halfExtents = halfExtents;
     }
 
+    @Override
+    public OrientedBoundingBoxCollider grow(Vector vector) {
+        return new OrientedBoundingBoxCollider(this, center, halfExtents.add(vector));
+    }
+
     public ImmutableVector getClosestPosition(ImmutableVector target) {
         ImmutableVector destination = target.subtract(center);
         ImmutableVector closest = center;
@@ -80,7 +85,7 @@ public class OrientedBoundingBoxCollider implements Collider {
         if (other instanceof OrientedBoundingBoxCollider obb) {
             ImmutableVector centerDifference = obb.center.subtract(this.center);
             for (int i = 0; i < 15; i++) {
-                ImmutableVector current = this.getByIndex(i, obb);;
+                ImmutableVector current = this.getByIndex(i, obb);
                 if (projectionOnAxis(centerDifference, current) >
                         projectionOnAxis(this.right.multiply(this.halfExtents.getX()), current) +
                                 projectionOnAxis(this.up.multiply(this.halfExtents.getY()), current) +
@@ -138,7 +143,7 @@ public class OrientedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public Collider scale(double amount) {
+    public OrientedBoundingBoxCollider scale(double amount) {
         return new OrientedBoundingBoxCollider(this, center, halfExtents.multiply(amount));
     }
 
@@ -149,19 +154,19 @@ public class OrientedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public Collider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
+    public OrientedBoundingBoxCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
         this.wrapToAABB().affectEntities(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
     @Override
-    public Collider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
+    public OrientedBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
         this.wrapToAABB().affectBlocks(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
     @Override
-    public Collider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+    public OrientedBoundingBoxCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
         this.wrapToAABB().affectLocations(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }

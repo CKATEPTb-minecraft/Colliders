@@ -35,6 +35,13 @@ public class CombinedBoundingBoxCollider implements Collider {
     }
 
     @Override
+    public CombinedBoundingBoxCollider grow(Vector vector) {
+        Collider[] colliders = Arrays.stream(this.colliders).map(collider ->
+                collider.grow(vector)).toArray(Collider[]::new);
+        return new CombinedBoundingBoxCollider(world, mode, colliders);
+    }
+
+    @Override
     public CombinedBoundingBoxCollider scale(double amount) {
         return new CombinedBoundingBoxCollider(world, mode, this.getColliders().map(collider ->
                 collider.scale(amount)).toArray(Collider[]::new));

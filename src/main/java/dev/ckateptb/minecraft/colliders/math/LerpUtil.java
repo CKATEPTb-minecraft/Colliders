@@ -8,8 +8,8 @@ public class LerpUtil {
         return (1.0 - step) * from + step * to;
     }
 
-    public static Vector lerp(Vector from, Vector to, double step) {
-        return new Vector(lerp(from.getX(), to.getX(), step), lerp(from.getY(), to.getY(), step), lerp(from.getZ(), to.getZ(), step));
+    public static ImmutableVector lerp(Vector from, Vector to, double step) {
+        return new ImmutableVector(lerp(from.getX(), to.getX(), step), lerp(from.getY(), to.getY(), step), lerp(from.getZ(), to.getZ(), step));
     }
 
     public static double clamp(double value, double min, double max) {
