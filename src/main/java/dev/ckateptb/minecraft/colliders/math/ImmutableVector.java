@@ -1,9 +1,11 @@
 package dev.ckateptb.minecraft.colliders.math;
 
 import com.google.common.primitives.Doubles;
+import dev.ckateptb.minecraft.colliders.Colliders;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.apache.commons.math3.util.FastMath;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
@@ -327,5 +329,12 @@ public class ImmutableVector extends Vector {
         double yaw = FastMath.atan2(z, x);
         double pitch = FastMath.atan2(FastMath.sqrt(FastMath.pow(z,2) + FastMath.pow(x, 2)), y) + Math.PI;
         return new EulerAngle(-pitch + FastMath.toRadians(90), yaw + FastMath.toRadians(90), 0);
+    }
+
+    public double getDistanceAboveGround(World world, boolean ignoreLiquids) {
+        return y - Colliders.ray(world, this, ImmutableVector.MINUS_J, FastMath.min(world.getMaxHeight(), this.y), 0)
+                .getFirstBlock(ignoreLiquids, true)
+                .map(entry -> Colliders.aabb(entry.getKey()).getMax().getY())
+                .orElse(0d);
     }
 }
