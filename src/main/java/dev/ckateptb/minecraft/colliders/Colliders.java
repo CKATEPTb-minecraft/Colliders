@@ -25,8 +25,8 @@ public class Colliders extends JavaPlugin {
     }
 
     public Colliders() {
+        IoC.registerBean(this, Colliders.class);
         IoC.scan(Colliders.class);
-        IoC.registerBean(this);
     }
 
     public static AxisAlignedBoundingBoxCollider aabb(Entity entity) {
