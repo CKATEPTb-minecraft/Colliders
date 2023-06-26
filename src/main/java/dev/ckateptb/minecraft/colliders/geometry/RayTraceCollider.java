@@ -1,5 +1,6 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
+import dev.ckateptb.minecraft.atom.adapter.AdapterUtils;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
@@ -114,7 +115,7 @@ public class RayTraceCollider implements Collider {
         if (traceResult == null) return Optional.empty();
         Block block = traceResult.getHitBlock();
         BlockFace blockFace = traceResult.getHitBlockFace();
-        return block == null || blockFace == null ? Optional.empty() : Optional.of(Map.entry(block, blockFace));
+        return block == null || blockFace == null ? Optional.empty() : Optional.of(Map.entry(AdapterUtils.adapt(block), blockFace));
     }
 
     public Optional<Block> getBlock(boolean ignoreLiquids, boolean ignorePassable, Predicate<Block> filter) {
@@ -136,7 +137,7 @@ public class RayTraceCollider implements Collider {
                 }
             }
             if (filter.test(block)) {
-                return Optional.of(block);
+                return Optional.of(block).map(AdapterUtils::adapt);
             }
             if (!ignoreObstacles && !passable) {
                 break;
@@ -153,7 +154,7 @@ public class RayTraceCollider implements Collider {
         Vector startPos = center.toBukkitVector();
         Vector dir = direction.clone().normalize().multiply(distance);
         BoundingBox aabb = BoundingBox.of(startPos, startPos).expandDirectional(dir).expand(size);
-        Collection<Entity> entities = Colliders.getAsyncService().getNearbyEntities(startPos.toLocation(world), aabb.getMaxX(), aabb.getMaxY(), aabb.getMaxZ());
+        Collection<Entity> entities = AdapterUtils.adapt(startPos.toLocation(world)).getNearbyEntities(aabb.getMaxX(), aabb.getMaxY(), aabb.getMaxZ());
 
         Entity nearestHitEntity = null;
         RayTraceResult nearestHitResult = null;
@@ -174,7 +175,7 @@ public class RayTraceCollider implements Collider {
         }
         RayTraceResult traceResult = (nearestHitEntity == null) ? null : new RayTraceResult(nearestHitResult.getHitPosition(), nearestHitEntity, nearestHitResult.getHitBlockFace());
         if (traceResult == null) return Optional.empty();
-        return Optional.ofNullable(traceResult.getHitEntity());
+        return Optional.ofNullable(traceResult.getHitEntity()).map(AdapterUtils::adapt);
     }
 
     public Optional<Vector> getPosition(boolean ignoreEntity, boolean ignoreBlock, boolean ignoreLiquid, boolean ignorePassable, Predicate<Entity> entityFilter, Predicate<Block> blockFilter) {

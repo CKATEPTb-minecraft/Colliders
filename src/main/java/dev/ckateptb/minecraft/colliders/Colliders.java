@@ -1,7 +1,6 @@
 package dev.ckateptb.minecraft.colliders;
 
 import dev.ckateptb.common.tableclothcontainer.IoC;
-import dev.ckateptb.minecraft.atom.async.AsyncService;
 import dev.ckateptb.minecraft.colliders.geometry.*;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import org.bukkit.Location;
@@ -17,12 +16,7 @@ import org.bukkit.util.Vector;
 import java.util.function.Function;
 
 public class Colliders extends JavaPlugin {
-    private static AsyncService asyncService;
     public static final Function<World, AxisAlignedBoundingBoxCollider> BLOCK = world -> Colliders.aabb(world, ImmutableVector.ZERO, ImmutableVector.ONE);
-
-    public static AsyncService getAsyncService() {
-        return asyncService == null ? asyncService = IoC.getBean(AsyncService.class) : asyncService;
-    }
 
     public Colliders() {
         IoC.registerBean(this, Colliders.class);
@@ -86,7 +80,7 @@ public class Colliders extends JavaPlugin {
 
     public static RayTraceCollider ray(LivingEntity entity, double distance, double size) {
         Location eyeLocation = entity.getEyeLocation();
-        return ray(entity.getWorld(), eyeLocation.toVector(), eyeLocation.getDirection(),distance, size);
+        return ray(entity.getWorld(), eyeLocation.toVector(), eyeLocation.getDirection(), distance, size);
     }
 
     public static RayTraceCollider ray(World world, Vector center, Vector direction, double distance, double size) {

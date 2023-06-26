@@ -1,7 +1,7 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
-import dev.ckateptb.minecraft.atom.async.AsyncService;
+import dev.ckateptb.minecraft.atom.adapter.AdapterUtils;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
@@ -99,21 +99,19 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
 
     @Override
     public AxisAlignedBoundingBoxCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
-        AsyncService asyncService = Colliders.getAsyncService();
         ImmutableVector vector = min.max(max);
-        consumer.accept(Flux.fromIterable(asyncService.getNearbyEntities(
-                this.getCenter().toLocation(world),
+        consumer.accept(Flux.fromIterable(AdapterUtils.adapt(this.getCenter().toLocation(world)).getNearbyEntities(
                 vector.getX(),
                 vector.getY(),
                 vector.getZ()
-        )).parallel().filter(entity -> this.intersects(Colliders.aabb(entity))));
+        )).parallel().filter(entity -> this.intersects(Colliders.aabb(entity))).map(AdapterUtils::adapt));
         return this;
     }
 
     @Override
     public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
         this.affectLocations(flux -> consumer.accept(flux.map(Location::getBlock)
-                .filter(block -> Colliders.aabb(block).intersects(this))));
+                .filter(block -> Colliders.aabb(block).intersects(this)).map(AdapterUtils::adapt)));
         return this;
     }
 
@@ -137,7 +135,8 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
                 .parallel()
                 .map(tuple -> new ImmutableVector(tuple.getT1(), tuple.getT2(), tuple.getT3()))
                 .map(vector -> vector.toLocation(world).toCenterLocation())
-                .filter(location -> Colliders.BLOCK.apply(world).at(location).intersects(this)));
+                .filter(location -> Colliders.BLOCK.apply(world).at(location).intersects(this))
+                .map(AdapterUtils::adapt));
         return this;
     }
 
