@@ -73,17 +73,21 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
         return vector.isInAABB(min, max);
     }
 
+    private boolean intersects(AxisAlignedBoundingBoxCollider first, AxisAlignedBoundingBoxCollider second) {
+        return first.min.getX() <= second.max.getX()
+                && first.max.getX() >= second.min.getX()
+                && first.min.getY() <= second.max.getY()
+                && first.max.getY() >= second.min.getY()
+                && first.min.getZ() <= second.max.getZ()
+                && first.max.getZ() >= second.min.getZ();
+    }
+
     @Override
     public boolean intersects(Collider other) {
         World otherWorld = other.getWorld();
         if (!otherWorld.equals(world)) return false;
         if (other instanceof AxisAlignedBoundingBoxCollider aabb) {
-            return this.min.getX() < aabb.max.getX()
-                    && this.max.getX() > aabb.min.getX()
-                    && this.min.getY() < aabb.max.getY()
-                    && this.max.getY() > aabb.min.getY()
-                    && this.min.getZ() < aabb.max.getZ()
-                    && this.max.getZ() > aabb.min.getZ();
+            return this.intersects(aabb, this) || this.intersects(this, aabb);
         }
         if (other instanceof SphereBoundingBoxCollider sphere) {
             return sphere.intersects(this);
@@ -111,7 +115,10 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
     @Override
     public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
         this.affectLocations(flux -> consumer.accept(flux.map(Location::getBlock)
-                .filter(block -> Colliders.aabb(block).intersects(this)).map(AdapterUtils::adapt)));
+                .filter(block -> {
+                    AxisAlignedBoundingBoxCollider aabb = Colliders.aabb(block);
+                    return aabb.intersects(this) || this.intersects(aabb);
+                }).map(AdapterUtils::adapt)));
         return this;
     }
 
