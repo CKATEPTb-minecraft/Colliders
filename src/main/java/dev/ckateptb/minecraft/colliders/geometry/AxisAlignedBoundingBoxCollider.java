@@ -144,6 +144,7 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
                 .map(vector -> vector.toLocation(world).toCenterLocation())
                 .filter(location -> Colliders.BLOCK.apply(world).at(location).intersects(this))
                 .map(AdapterUtils::adapt));
+        locations.tryEmitComplete();
         return this;
     }
 
