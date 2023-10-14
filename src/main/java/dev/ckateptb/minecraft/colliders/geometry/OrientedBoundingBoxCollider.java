@@ -13,7 +13,7 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
-import reactor.core.publisher.ParallelFlux;
+import reactor.core.publisher.Flux;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -154,24 +154,24 @@ public class OrientedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public OrientedBoundingBoxCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
+    public OrientedBoundingBoxCollider affectEntities(Consumer<Flux<Entity>> consumer) {
         this.wrapToAABB().affectEntities(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
     @Override
-    public OrientedBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
+    public OrientedBoundingBoxCollider affectBlocks(Consumer<Flux<Block>> consumer) {
         this.wrapToAABB().affectBlocks(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
     @Override
-    public OrientedBoundingBoxCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+    public OrientedBoundingBoxCollider affectLocations(Consumer<Flux<Location>> consumer) {
         this.wrapToAABB().affectLocations(flux -> consumer.accept(applyFilter(flux, Colliders::aabb)));
         return this;
     }
 
-    private <T> ParallelFlux<T> applyFilter(ParallelFlux<T> flux, Function<T, Collider> getter) {
+    private <T> Flux<T> applyFilter(Flux<T> flux, Function<T, Collider> getter) {
         return flux.filter(t -> this.intersects(getter.apply(t)));
     }
 

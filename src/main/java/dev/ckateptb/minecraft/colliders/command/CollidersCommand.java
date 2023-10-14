@@ -6,7 +6,7 @@ import cloud.commandframework.annotations.CommandPermission;
 import com.destroystokyo.paper.ParticleBuilder;
 import dev.ckateptb.common.tableclothcontainer.IoC;
 import dev.ckateptb.common.tableclothcontainer.annotation.Component;
-import dev.ckateptb.minecraft.atom.scheduler.SyncScheduler;
+import dev.ckateptb.minecraft.atom.Atom;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.geometry.OrientedBoundingBoxCollider;
@@ -175,27 +175,31 @@ public class CollidersCommand implements Command<Colliders> {
     public void renderStatic() {
         Collider[] colliders = this.colliders.toArray(Collider[]::new);
         for (Collider collider : colliders) {
-            collider.affectEntities(flux -> flux.runOn(new SyncScheduler()).subscribe(entity -> {
-                if (entity instanceof LivingEntity livingEntity) {
-                    livingEntity.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 5, 1));
-                }
-            }));
-            collider.affectLocations(flux -> flux.runOn(Schedulers.boundedElastic()).subscribe(location -> {
-                ParticleBuilder particle = Particle.REDSTONE.builder().force(true).location(location).count(1);
-                if (Arrays.stream(colliders).anyMatch(other -> {
-                    if (collider == other) return false;
-                    return other.contains(location.toVector());
-                })) {
-                    particle.color(Color.RED, 3.5f).spawn();
-                } else if (Arrays.stream(colliders).anyMatch(other -> {
-                    if (collider == other) return false;
-                    return other.intersects(collider);
-                })) {
-                    particle.color(Color.BLUE, 0.5f).spawn();
-                } else {
-                    particle.color(Color.GREEN, 0.5f).spawn();
-                }
-            }));
+            collider.affectEntities(flux -> flux
+                    .publishOn(Atom.syncScheduler())
+                    .subscribe(entity -> {
+                        if (entity instanceof LivingEntity livingEntity) {
+                            livingEntity.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 5, 1));
+                        }
+                    }));
+            collider.affectLocations(flux -> flux
+                    .publishOn(Schedulers.boundedElastic())
+                    .subscribe(location -> {
+                        ParticleBuilder particle = Particle.REDSTONE.builder().force(true).location(location).count(1);
+                        if (Arrays.stream(colliders).anyMatch(other -> {
+                            if (collider == other) return false;
+                            return other.contains(location.toVector());
+                        })) {
+                            particle.color(Color.RED, 3.5f).spawn();
+                        } else if (Arrays.stream(colliders).anyMatch(other -> {
+                            if (collider == other) return false;
+                            return other.intersects(collider);
+                        })) {
+                            particle.color(Color.BLUE, 0.5f).spawn();
+                        } else {
+                            particle.color(Color.GREEN, 0.5f).spawn();
+                        }
+                    }));
         }
     }
 
@@ -205,7 +209,7 @@ public class CollidersCommand implements Command<Colliders> {
                     .affectLocations(flux -> flux
                             .map(Location::getBlock)
                             .concatMap(block -> Mono.just(block).delayElement(Duration.of(1, ChronoUnit.MILLIS)))
-                            .runOn(new SyncScheduler())
+                            .publishOn(Atom.syncScheduler())
                             .subscribe(block -> block.setType(Material.SAND, false)));
         } else {
             AtomicReference<Collider> colliderReference = new AtomicReference<>(collider);

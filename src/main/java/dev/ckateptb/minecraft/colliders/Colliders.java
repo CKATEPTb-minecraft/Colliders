@@ -31,7 +31,7 @@ public class Colliders extends JavaPlugin {
         double halfWidth = 0.5 * entity.getWidth();
         ImmutableVector min = new ImmutableVector(x - halfWidth, y, z - halfWidth);
         ImmutableVector max = new ImmutableVector(x + halfWidth, y + entity.getHeight(), z + halfWidth);
-        return new AxisAlignedBoundingBoxCollider(entity.getWorld(), min, max);
+        return new AxisAlignedBoundingBoxCollider(entity.getWorld(), min, max).at(location);
     }
 
     public static AxisAlignedBoundingBoxCollider aabb(Block block) {

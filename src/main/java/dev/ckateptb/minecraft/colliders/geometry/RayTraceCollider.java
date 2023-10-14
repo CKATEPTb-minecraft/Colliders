@@ -1,6 +1,5 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
-import dev.ckateptb.minecraft.atom.adapter.AdapterUtils;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
@@ -13,7 +12,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.*;
-import reactor.core.publisher.ParallelFlux;
+import reactor.core.publisher.Flux;
 
 import java.util.Collection;
 import java.util.Map;
@@ -71,19 +70,19 @@ public class RayTraceCollider implements Collider {
     }
 
     @Override
-    public RayTraceCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
+    public RayTraceCollider affectEntities(Consumer<Flux<Entity>> consumer) {
         this.orientedBoundingBoxCollider.affectEntities(consumer);
         return this;
     }
 
     @Override
-    public RayTraceCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
+    public RayTraceCollider affectBlocks(Consumer<Flux<Block>> consumer) {
         this.orientedBoundingBoxCollider.affectBlocks(consumer);
         return this;
     }
 
     @Override
-    public RayTraceCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+    public RayTraceCollider affectLocations(Consumer<Flux<Location>> consumer) {
         this.orientedBoundingBoxCollider.affectLocations(consumer);
         return this;
     }
@@ -115,7 +114,7 @@ public class RayTraceCollider implements Collider {
         if (traceResult == null) return Optional.empty();
         Block block = traceResult.getHitBlock();
         BlockFace blockFace = traceResult.getHitBlockFace();
-        return block == null || blockFace == null ? Optional.empty() : Optional.of(Map.entry(AdapterUtils.adapt(block), blockFace));
+        return block == null || blockFace == null ? Optional.empty() : Optional.of(Map.entry(block, blockFace));
     }
 
     public Optional<Block> getBlock(boolean ignoreLiquids, boolean ignorePassable, Predicate<Block> filter) {
@@ -137,7 +136,7 @@ public class RayTraceCollider implements Collider {
                 }
             }
             if (filter.test(block)) {
-                return Optional.of(block).map(AdapterUtils::adapt);
+                return Optional.of(block);
             }
             if (!ignoreObstacles && !passable) {
                 break;
@@ -154,14 +153,14 @@ public class RayTraceCollider implements Collider {
         Vector startPos = center.toBukkitVector();
         Vector dir = direction.clone().normalize().multiply(distance);
         BoundingBox aabb = BoundingBox.of(startPos, startPos).expandDirectional(dir).expand(size);
-        Collection<Entity> entities = AdapterUtils.adapt(startPos.toLocation(world)).getNearbyEntities(aabb.getMaxX(), aabb.getMaxY(), aabb.getMaxZ());
+        Collection<Entity> entities = startPos.toLocation(world).getNearbyEntities(aabb.getMaxX(), aabb.getMaxY(), aabb.getMaxZ());
 
         Entity nearestHitEntity = null;
         RayTraceResult nearestHitResult = null;
         double nearestDistanceSq = Double.MAX_VALUE;
 
         for (Entity entity : entities) {
-            if(!filter.test(entity)) continue;
+            if (!filter.test(entity)) continue;
             BoundingBox boundingBox = entity.getBoundingBox().expand(size);
             RayTraceResult hitResult = boundingBox.rayTrace(startPos, direction, distance);
             if (hitResult != null) {
@@ -175,7 +174,7 @@ public class RayTraceCollider implements Collider {
         }
         RayTraceResult traceResult = (nearestHitEntity == null) ? null : new RayTraceResult(nearestHitResult.getHitPosition(), nearestHitEntity, nearestHitResult.getHitBlockFace());
         if (traceResult == null) return Optional.empty();
-        return Optional.ofNullable(traceResult.getHitEntity()).map(AdapterUtils::adapt);
+        return Optional.ofNullable(traceResult.getHitEntity());
     }
 
     public Optional<Vector> getPosition(boolean ignoreEntity, boolean ignoreBlock, boolean ignoreLiquid, boolean ignorePassable, Predicate<Entity> entityFilter, Predicate<Block> blockFilter) {
