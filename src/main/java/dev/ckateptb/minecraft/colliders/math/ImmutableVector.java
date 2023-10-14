@@ -22,18 +22,6 @@ public class ImmutableVector extends Vector {
     public static final ImmutableVector MIN_VELOCITY = new ImmutableVector(-4, -4, -4);
     public static final ImmutableVector MAX_VELOCITY = new ImmutableVector(4, 4, 4);
 
-    public static ImmutableVector of(Location location) {
-        return new ImmutableVector(location.getX(), location.getY(), location.getZ());
-    }
-
-    public static ImmutableVector of(Vector vector) {
-        return new ImmutableVector(vector.getX(), vector.getY(), vector.getZ());
-    }
-
-    public static ImmutableVector of(Vector3D vector) {
-        return new ImmutableVector(vector.getX(), vector.getY(), vector.getZ());
-    }
-
     public ImmutableVector() {
         super();
     }
@@ -48,6 +36,18 @@ public class ImmutableVector extends Vector {
 
     public ImmutableVector(float x, float y, float z) {
         super(x, y, z);
+    }
+
+    public static ImmutableVector of(Location location) {
+        return new ImmutableVector(location.getX(), location.getY(), location.getZ());
+    }
+
+    public static ImmutableVector of(Vector vector) {
+        return new ImmutableVector(vector.getX(), vector.getY(), vector.getZ());
+    }
+
+    public static ImmutableVector of(Vector3D vector) {
+        return new ImmutableVector(vector.getX(), vector.getY(), vector.getZ());
     }
 
     public ImmutableVector min(Vector other) {
@@ -327,7 +327,7 @@ public class ImmutableVector extends Vector {
 
     public EulerAngle directionToEulerAngle() {
         double yaw = FastMath.atan2(z, x);
-        double pitch = FastMath.atan2(FastMath.sqrt(FastMath.pow(z,2) + FastMath.pow(x, 2)), y) + Math.PI;
+        double pitch = FastMath.atan2(FastMath.sqrt(FastMath.pow(z, 2) + FastMath.pow(x, 2)), y) + Math.PI;
         return new EulerAngle(-pitch + FastMath.toRadians(90), yaw + FastMath.toRadians(90), 0);
     }
 

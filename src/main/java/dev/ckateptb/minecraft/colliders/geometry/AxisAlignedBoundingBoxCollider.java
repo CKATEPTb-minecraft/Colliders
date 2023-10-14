@@ -1,19 +1,21 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
 import com.google.common.base.Objects;
-import dev.ckateptb.minecraft.atom.adapter.AdapterUtils;
+import dev.ckateptb.minecraft.atom.Atom;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import lombok.Getter;
+import org.apache.commons.math3.util.FastMath;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.ParallelFlux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
@@ -102,35 +104,49 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
+    public AxisAlignedBoundingBoxCollider affectEntities(Consumer<Flux<Entity>> consumer) {
         ImmutableVector vector = min.max(max);
-        consumer.accept(Flux.fromIterable(AdapterUtils.adapt(this.getCenter().toLocation(world)).getNearbyEntities(
-                vector.getX(),
-                vector.getY(),
-                vector.getZ()
-        )).parallel().filter(entity -> this.intersects(Colliders.aabb(entity))).map(AdapterUtils::adapt));
+        consumer.accept(Mono.defer(() -> Mono.just(this.getCenter().toLocation(world)))
+                .publishOn(Atom.syncScheduler())
+                .flatMapMany(location -> Flux.fromIterable(location.getNearbyEntities(
+                        vector.getX(),
+                        vector.getY(),
+                        vector.getZ()
+                )))
+                .publishOn(Schedulers.boundedElastic())
+                .filter(entity -> this.intersects(Colliders.aabb(entity))));
         return this;
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
-        this.affectLocations(flux -> consumer.accept(flux.map(Location::getBlock)
-                .filter(block -> {
-                    AxisAlignedBoundingBoxCollider aabb = Colliders.aabb(block);
-                    return aabb.intersects(this) || this.intersects(aabb);
-                }).map(AdapterUtils::adapt)));
+    public AxisAlignedBoundingBoxCollider affectBlocks(Consumer<Flux<Block>> consumer) {
+        this.affectLocations(flux ->
+                consumer.accept(flux
+                        .map(Location::getBlock)
+                        .filter(block -> {
+                            AxisAlignedBoundingBoxCollider aabb = Colliders.aabb(block);
+                            return aabb.intersects(this) || this.intersects(aabb);
+                        })));
         return this;
     }
 
     @Override
-    public AxisAlignedBoundingBoxCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
+    public AxisAlignedBoundingBoxCollider affectLocations(Consumer<Flux<Location>> consumer) {
         ImmutableVector position = this.getCenter();
         double maxExtent = getHalfExtents().maxComponent();
-        int radius = (int) (Math.ceil(maxExtent) + 1);
+        int radius = (int) (FastMath.ceil(maxExtent) + 1);
         double originX = position.getX();
         double originY = position.getY();
         double originZ = position.getZ();
         Sinks.Many<Tuple3<Double, Double, Double>> locations = Sinks.many().unicast().onBackpressureBuffer();
+        Flux<Tuple3<Double, Double, Double>> flux = locations.asFlux();
+        consumer.accept(flux
+                .map(tuple -> new ImmutableVector(tuple.getT1(), tuple.getT2(), tuple.getT3()))
+                .map(vector -> vector.toLocation(world).toCenterLocation())
+                .filter(location -> {
+                    Collider aabb = Colliders.BLOCK.apply(world).at(location);
+                    return aabb.intersects(this) || this.intersects(aabb);
+                }));
         for (double x = originX - radius; x <= originX + radius; x++) {
             for (double y = originY - radius; y <= originY + radius; y++) {
                 for (double z = originZ - radius; z <= originZ + radius; z++) {
@@ -138,12 +154,6 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
                 }
             }
         }
-        consumer.accept(locations.asFlux()
-                .parallel()
-                .map(tuple -> new ImmutableVector(tuple.getT1(), tuple.getT2(), tuple.getT3()))
-                .map(vector -> vector.toLocation(world).toCenterLocation())
-                .filter(location -> Colliders.BLOCK.apply(world).at(location).intersects(this))
-                .map(AdapterUtils::adapt));
         locations.tryEmitComplete();
         return this;
     }

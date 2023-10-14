@@ -6,7 +6,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
-import reactor.core.publisher.ParallelFlux;
+import reactor.core.publisher.Flux;
 
 import java.util.function.Consumer;
 
@@ -21,11 +21,11 @@ public interface Collider {
 
     boolean contains(Vector vector);
 
-    Collider affectEntities(Consumer<ParallelFlux<Entity>> consumer);
+    Collider affectEntities(Consumer<Flux<Entity>> consumer);
 
-    Collider affectBlocks(Consumer<ParallelFlux<Block>> consumer);
+    Collider affectBlocks(Consumer<Flux<Block>> consumer);
 
-    Collider affectLocations(Consumer<ParallelFlux<Location>> consumer);
+    Collider affectLocations(Consumer<Flux<Location>> consumer);
 
     Collider grow(Vector vector);
 

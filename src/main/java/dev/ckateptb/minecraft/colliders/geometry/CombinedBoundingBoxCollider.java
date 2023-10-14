@@ -9,7 +9,6 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.ParallelFlux;
 
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
@@ -79,36 +78,54 @@ public class CombinedBoundingBoxCollider implements Collider {
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectEntities(Consumer<ParallelFlux<Entity>> consumer) {
-        consumer.accept(applyFilter(Flux.fromArray(colliders).parallel().flatMap(collider -> {
-            AtomicReference<ParallelFlux<Entity>> atomicReference = new AtomicReference<>();
-            collider.affectEntities(atomicReference::set);
-            return atomicReference.get();
-        }), Colliders::aabb));
+    public CombinedBoundingBoxCollider affectEntities(Consumer<Flux<Entity>> consumer) {
+        consumer.accept(
+                this.applyFilter(
+                        Flux.fromArray(this.colliders)
+                                .flatMap(collider -> {
+                                    AtomicReference<Flux<Entity>> atomicReference = new AtomicReference<>();
+                                    collider.affectEntities(atomicReference::set);
+                                    return atomicReference.get();
+                                }),
+                        Colliders::aabb
+                )
+        );
         return this;
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectBlocks(Consumer<ParallelFlux<Block>> consumer) {
-        consumer.accept(applyFilter(Flux.fromArray(colliders).parallel().flatMap(collider -> {
-            AtomicReference<ParallelFlux<Block>> atomicReference = new AtomicReference<>();
-            collider.affectBlocks(atomicReference::set);
-            return atomicReference.get();
-        }), Colliders::aabb));
+    public CombinedBoundingBoxCollider affectBlocks(Consumer<Flux<Block>> consumer) {
+        consumer.accept(
+                this.applyFilter(
+                        Flux.fromArray(this.colliders)
+                                .flatMap(collider -> {
+                                    AtomicReference<Flux<Block>> atomicReference = new AtomicReference<>();
+                                    collider.affectBlocks(atomicReference::set);
+                                    return atomicReference.get();
+                                })
+                        , Colliders::aabb
+                )
+        );
         return this;
     }
 
     @Override
-    public CombinedBoundingBoxCollider affectLocations(Consumer<ParallelFlux<Location>> consumer) {
-        consumer.accept(applyFilter(Flux.fromArray(colliders).parallel().flatMap(collider -> {
-            AtomicReference<ParallelFlux<Location>> atomicReference = new AtomicReference<>();
-            collider.affectLocations(atomicReference::set);
-            return atomicReference.get();
-        }), Colliders::aabb));
+    public CombinedBoundingBoxCollider affectLocations(Consumer<Flux<Location>> consumer) {
+        consumer.accept(
+                this.applyFilter(
+                        Flux.fromArray(this.colliders)
+                                .flatMap(collider -> {
+                                    AtomicReference<Flux<Location>> atomicReference = new AtomicReference<>();
+                                    collider.affectLocations(atomicReference::set);
+                                    return atomicReference.get();
+                                }),
+                        Colliders::aabb
+                )
+        );
         return this;
     }
 
-    private <T> ParallelFlux<T> applyFilter(ParallelFlux<T> flux, Function<T, Collider> getter) {
+    private <T> Flux<T> applyFilter(Flux<T> flux, Function<T, Collider> getter) {
         return flux.filter(t -> {
             Collider aabb = getter.apply(t);
             return mode == CombinedIntersectsMode.ANY || intersectsAll(aabb);
