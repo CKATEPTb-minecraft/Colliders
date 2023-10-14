@@ -37,7 +37,7 @@ public class Colliders extends JavaPlugin {
     public static AxisAlignedBoundingBoxCollider aabb(Block block) {
         World world = block.getWorld();
         BoundingBox box = block.getBoundingBox();
-        if(block.getType().isAir()) {
+        if (block.getType().isAir()) {
             return new AxisAlignedBoundingBoxCollider(world, ImmutableVector.ZERO, ImmutableVector.ZERO);
         }
         if (box.getVolume() == 0 || !block.isCollidable()) {
