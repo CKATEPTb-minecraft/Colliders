@@ -141,6 +141,7 @@ public class AxisAlignedBoundingBoxCollider implements Collider {
         Sinks.Many<Tuple3<Double, Double, Double>> locations = Sinks.many().unicast().onBackpressureBuffer();
         Flux<Tuple3<Double, Double, Double>> flux = locations.asFlux();
         consumer.accept(flux
+                .publishOn(Schedulers.boundedElastic())
                 .map(tuple -> new ImmutableVector(tuple.getT1(), tuple.getT2(), tuple.getT3()))
                 .map(vector -> vector.toLocation(world).toCenterLocation())
                 .filter(location -> {
