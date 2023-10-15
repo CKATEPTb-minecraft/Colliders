@@ -1,9 +1,11 @@
 package dev.ckateptb.minecraft.colliders.geometry;
 
+import dev.ckateptb.minecraft.atom.Atom;
 import dev.ckateptb.minecraft.colliders.Collider;
 import dev.ckateptb.minecraft.colliders.Colliders;
 import dev.ckateptb.minecraft.colliders.math.ImmutableVector;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import org.apache.commons.math3.util.FastMath;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
@@ -17,6 +19,8 @@ import reactor.core.publisher.Flux;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -149,11 +153,19 @@ public class RayTraceCollider implements Collider {
         return this.getEntity(filter, this.distance);
     }
 
+    @SneakyThrows
     public Optional<Entity> getEntity(Predicate<Entity> filter, double distance) {
         Vector startPos = center.toBukkitVector();
         Vector dir = direction.clone().normalize().multiply(distance);
         BoundingBox aabb = BoundingBox.of(startPos, startPos).expandDirectional(dir).expand(size);
-        Collection<Entity> entities = startPos.toLocation(world).getNearbyEntities(aabb.getMaxX(), aabb.getMaxY(), aabb.getMaxZ());
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        AtomicReference<Collection<Entity>> reference = new AtomicReference<>();
+        Atom.syncScheduler().schedule(() -> {
+            reference.set(startPos.toLocation(world).getNearbyEntities(aabb.getMaxX(), aabb.getMaxY(), aabb.getMaxZ()));
+            countDownLatch.countDown();
+        });
+        countDownLatch.await(); // TODO We shouldn't block thread
+        Collection<Entity> entities = reference.get();
 
         Entity nearestHitEntity = null;
         RayTraceResult nearestHitResult = null;
